@@ -1,55 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { ExpenseItem, MONTHS, STANDARD_CATEGORIES } from "../types";
 
-const getSystemInstruction = () => `
-Eres un asesor financiero experto y amigable especializado en economía doméstica de Uruguay.
-Tu objetivo es analizar los datos de gastos E INGRESOS mensuales del usuario y proveer insights valiosos.
 
-REGLA DE ANÁLISIS DE DATOS:
-- El usuario te proporcionará una configuración que indica a partir de qué mes los datos son fiables.
-- **IGNORA** los meses anteriores a ese punto de inicio para calcular promedios.
-- Si ves ceros en meses anteriores al inicio configurado, asume que es falta de registro, no que el gasto fue cero.
-
-Formato de respuesta:
-1. Usa Markdown.
-2. Sé conciso.
-3. Habla en pesos uruguayos ($).
-`;
-
-export const analyzeExpenses = async (data: ExpenseItem[], question: string, configText?: string) => {
-  try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    
-    // Convert complex data structure to a readable string summary for the model
-    const dataSummary = data.map(item => {
-      const activeMonths = item.amounts.map((amt, idx) => `${MONTHS[idx]}: $${amt}`).join(', ');
-      return `- ${item.category} / ${item.name}: [${activeMonths}]`;
-    }).join('\n');
-
-    const prompt = `
-    Aquí están mis datos de GASTOS para el año seleccionado.
-    CONFIGURACIÓN DE CONTEXTO: ${configText || 'Analiza todos los datos disponibles.'}
-    
-    Datos:
-    ${dataSummary}
-
-    Pregunta del usuario: ${question}
-    `;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        systemInstruction: getSystemInstruction(),
-      }
-    });
-
-    return response.text;
-  } catch (error) {
-    console.error("Error calling Gemini:", error);
-    return "Lo siento, hubo un problema al conectar con el asistente financiero. Por favor verifica tu conexión o intenta más tarde.";
-  }
-};
 
 // --- NEW FUNCTIONALITY: SMART IMPORT ---
 

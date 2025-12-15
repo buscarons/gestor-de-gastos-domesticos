@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { LayoutDashboard, Table2, BrainCircuit, Wallet, BookOpen, ChevronLeft, ChevronRight, Plus, ShoppingBag, Settings } from 'lucide-react';
+import { LayoutDashboard, Table2, Wallet, BookOpen, ChevronLeft, ChevronRight, Plus, ShoppingBag, Settings } from 'lucide-react';
 import { ExpenseItem, IncomeItem, ViewState, Product, ProductTag, YearConfig, MONTHS } from './types';
 import { Dashboard } from './components/Dashboard';
 import { ExpenseEntry } from './components/ExpenseEntry';
 import { IncomeEntry } from './components/IncomeEntry';
-import { AIAdvisor } from './components/AIAdvisor';
+
 import { CategoryHelp } from './components/CategoryHelp';
 import { QuickAddModal } from './components/QuickAddModal';
 import { ProductManager } from './components/ProductManager';
@@ -14,24 +14,24 @@ import { StorageService } from './services/StorageService';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('dashboard');
-  
+
   // Data States
   const [data, setData] = useState<ExpenseItem[]>([]);
   const [incomeData, setIncomeData] = useState<IncomeItem[]>([]);
-  const [globalBaseBalance, setGlobalBaseBalance] = useState<number>(0); 
+  const [globalBaseBalance, setGlobalBaseBalance] = useState<number>(0);
   const [yearConfigs, setYearConfigs] = useState<YearConfig[]>([]);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [tags, setTags] = useState<ProductTag[]>([]);
-  
+
   // UI States
   const [loading, setLoading] = useState(true);
-  const [isSetup, setIsSetup] = useState(false); 
+  const [isSetup, setIsSetup] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showYearSettings, setShowYearSettings] = useState(false);
   const [entryTab, setEntryTab] = useState<'expenses' | 'income'>('expenses');
-  
+
   // Year state
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
@@ -87,13 +87,13 @@ const App: React.FC = () => {
     const pastYears = Array.from(allYears).filter(y => y < selectedYear);
 
     pastYears.forEach(year => {
-       const yearExp = data.filter(i => i.year === year);
-       const yearInc = incomeData.filter(i => i.year === year);
-       
-       const totalExp = yearExp.reduce((acc, item) => acc + item.amounts.reduce((a,b)=>a+b,0), 0);
-       const totalInc = yearInc.reduce((acc, item) => acc + item.amounts.reduce((a,b)=>a+b,0), 0);
-       
-       accumulated += (totalInc - totalExp);
+      const yearExp = data.filter(i => i.year === year);
+      const yearInc = incomeData.filter(i => i.year === year);
+
+      const totalExp = yearExp.reduce((acc, item) => acc + item.amounts.reduce((a, b) => a + b, 0), 0);
+      const totalInc = yearInc.reduce((acc, item) => acc + item.amounts.reduce((a, b) => a + b, 0), 0);
+
+      accumulated += (totalInc - totalExp);
     });
 
     return accumulated;
@@ -159,10 +159,10 @@ const App: React.FC = () => {
   if (!isSetup) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-         <WelcomeScreen 
-            onManualStart={handleManualSetup}
-            defaultYear={selectedYear} 
-         />
+        <WelcomeScreen
+          onManualStart={handleManualSetup}
+          defaultYear={selectedYear}
+        />
       </div>
     );
   }
@@ -170,8 +170,8 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gray-50 relative">
       <CategoryHelp isOpen={showHelp} onClose={() => setShowHelp(false)} />
-      
-      <YearSettingsModal 
+
+      <YearSettingsModal
         isOpen={showYearSettings}
         onClose={() => setShowYearSettings(false)}
         year={selectedYear}
@@ -179,8 +179,8 @@ const App: React.FC = () => {
         onSave={(idx) => handleUpdateYearConfig(idx)}
       />
 
-      <QuickAddModal 
-        isOpen={showQuickAdd} 
+      <QuickAddModal
+        isOpen={showQuickAdd}
         onClose={() => setShowQuickAdd(false)}
         data={currentYearData}
         year={selectedYear}
@@ -188,7 +188,7 @@ const App: React.FC = () => {
           handleUpdateData(updated);
         }}
       />
-      
+
       {/* Sidebar Navigation */}
       <aside className="w-full md:w-64 bg-white border-r border-gray-200 flex-shrink-0 sticky top-0 md:h-screen z-20 flex flex-col">
         <div className="p-6 flex items-center gap-3 border-b border-gray-100">
@@ -200,50 +200,39 @@ const App: React.FC = () => {
             <p className="text-xs text-gray-500">Gestión Integral</p>
           </div>
         </div>
-        
+
         <nav className="p-4 space-y-1 flex-1">
           <button
             onClick={() => setView('dashboard')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-              view === 'dashboard' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
-            }`}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${view === 'dashboard' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
+              }`}
           >
             <LayoutDashboard size={18} />
             Estadísticas
           </button>
-          
+
           <button
             onClick={() => setView('entry')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-              view === 'entry' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
-            }`}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${view === 'entry' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
+              }`}
           >
             <Table2 size={18} />
             Registro (Gastos/Ingresos)
           </button>
-          
+
           <button
             onClick={() => setView('products')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-              view === 'products' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:bg-gray-50'
-            }`}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${view === 'products' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:bg-gray-50'
+              }`}
           >
             <ShoppingBag size={18} />
             Catálogo de Productos
           </button>
 
-          <button
-            onClick={() => setView('advisor')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-              view === 'advisor' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            <BrainCircuit size={18} />
-            Asistente IA
-          </button>
+
 
           <div className="pt-4 mt-4 border-t border-gray-100">
-             <button
+            <button
               onClick={() => setShowHelp(true)}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-colors"
             >
@@ -268,19 +257,19 @@ const App: React.FC = () => {
               {view === 'dashboard' && 'Resumen Financiero'}
               {view === 'entry' && 'Libro Diario'}
               {view === 'products' && 'Mi Catálogo'}
-              {view === 'advisor' && 'Análisis Inteligente'}
+
             </h2>
             <p className="text-gray-500 text-sm mt-1">
               {view === 'dashboard' && `Visualiza el flujo de caja y proyecciones de ${selectedYear}.`}
               {view === 'entry' && `Administra tus ingresos y gastos para el año ${selectedYear}.`}
               {view === 'products' && `Gestiona tus productos frecuentes para carga rápida.`}
-              {view === 'advisor' && `Consulta a la IA sobre tus patrones de ${selectedYear}.`}
+
             </p>
           </div>
-          
+
           {view !== 'products' && (
             <div className="flex items-center bg-white rounded-lg shadow-sm border border-gray-200 p-1">
-              <button 
+              <button
                 onClick={() => setSelectedYear(y => y - 1)}
                 className="p-2 hover:bg-gray-100 rounded-md text-gray-600"
               >
@@ -289,7 +278,7 @@ const App: React.FC = () => {
               <span className="px-4 font-bold text-gray-800 min-w-[80px] text-center select-none">
                 {selectedYear}
               </span>
-              <button 
+              <button
                 onClick={() => setSelectedYear(y => y + 1)}
                 className="p-2 hover:bg-gray-100 rounded-md text-gray-600"
               >
@@ -300,15 +289,15 @@ const App: React.FC = () => {
         </header>
 
         {view === 'dashboard' && (
-          <Dashboard 
-            data={currentYearData} 
+          <Dashboard
+            data={currentYearData}
             incomeData={currentYearIncome}
-            year={selectedYear} 
-            initialSavings={openingBalanceForSelectedYear} 
-            startMonthIndex={currentYearConfig.startMonthIndex} 
+            year={selectedYear}
+            initialSavings={openingBalanceForSelectedYear}
+            startMonthIndex={currentYearConfig.startMonthIndex}
           />
         )}
-        
+
         {view === 'entry' && (
           <div className="space-y-6">
             {/* Header: Tabs + Global Config */}
@@ -316,24 +305,22 @@ const App: React.FC = () => {
               <div className="flex gap-1 bg-gray-200 p-1 rounded-lg w-fit">
                 <button
                   onClick={() => setEntryTab('expenses')}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-                    entryTab === 'expenses' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-600 hover:text-gray-800'
-                  }`}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${entryTab === 'expenses' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-600 hover:text-gray-800'
+                    }`}
                 >
                   Gastos
                 </button>
                 <button
                   onClick={() => setEntryTab('income')}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-                    entryTab === 'income' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-600 hover:text-gray-800'
-                  }`}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${entryTab === 'income' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-600 hover:text-gray-800'
+                    }`}
                 >
                   Ingresos y Ahorros
                 </button>
               </div>
 
               {/* Global Year Config Button */}
-              <button 
+              <button
                 onClick={() => setShowYearSettings(true)}
                 className="flex items-center gap-2 text-xs font-medium text-gray-500 hover:text-blue-600 bg-white border border-gray-200 hover:border-blue-300 px-3 py-1.5 rounded-lg transition-colors"
                 title="Corregir mes de inicio de datos"
@@ -344,28 +331,28 @@ const App: React.FC = () => {
             </div>
 
             {currentYearData.length === 0 && entryTab === 'expenses' && (
-               <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex items-start gap-3 mb-4">
-                  <div className="p-1.5 bg-blue-100 text-blue-600 rounded-full mt-0.5"><Plus size={16}/></div>
-                  <div>
-                    <h4 className="font-bold text-blue-800 text-sm">Comienza a registrar</h4>
-                    <p className="text-xs text-blue-600 mt-1">Tu tabla está vacía. Usa el formulario de abajo para agregar tu primera categoría (ej. "Supermercado") y empezar.</p>
-                  </div>
-               </div>
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex items-start gap-3 mb-4">
+                <div className="p-1.5 bg-blue-100 text-blue-600 rounded-full mt-0.5"><Plus size={16} /></div>
+                <div>
+                  <h4 className="font-bold text-blue-800 text-sm">Comienza a registrar</h4>
+                  <p className="text-xs text-blue-600 mt-1">Tu tabla está vacía. Usa el formulario de abajo para agregar tu primera categoría (ej. "Supermercado") y empezar.</p>
+                </div>
+              </div>
             )}
 
             {entryTab === 'expenses' ? (
-              <ExpenseEntry 
+              <ExpenseEntry
                 data={currentYearData}
                 previousYearData={previousYearData}
-                categories={availableCategories} 
-                onUpdate={handleUpdateData} 
+                categories={availableCategories}
+                onUpdate={handleUpdateData}
                 year={selectedYear}
                 products={products}
                 onUpdateProducts={handleUpdateProducts}
-                startMonthIndex={currentYearConfig.startMonthIndex} 
+                startMonthIndex={currentYearConfig.startMonthIndex}
               />
             ) : (
-              <IncomeEntry 
+              <IncomeEntry
                 data={currentYearIncome}
                 previousYearData={previousYearIncome}
                 onUpdate={handleUpdateIncome}
@@ -378,27 +365,22 @@ const App: React.FC = () => {
             )}
           </div>
         )}
-        
+
         {view === 'products' && (
-          <ProductManager 
-            products={products} 
-            tags={tags} 
+          <ProductManager
+            products={products}
+            tags={tags}
             onUpdateProducts={handleUpdateProducts}
             onUpdateTags={handleUpdateTags}
-            allExpenses={data} 
+            allExpenses={data}
           />
         )}
-        
-        {view === 'advisor' && (
-          <AIAdvisor 
-            data={currentYearData} 
-            configText={`Considera que para el año ${selectedYear}, los datos válidos comienzan en ${MONTHS[currentYearConfig.startMonthIndex]}.`}
-          />
-        )}
+
+
       </main>
 
       {/* Floating Action Button for Quick Add */}
-      {currentYearData.length > 0 && view !== 'products' && view !== 'advisor' && (
+      {currentYearData.length > 0 && view !== 'products' && (
         <button
           onClick={() => setShowQuickAdd(true)}
           className="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 z-40 group"

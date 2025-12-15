@@ -56,7 +56,7 @@ export interface CategoryTotal {
   value: number;
 }
 
-export type ViewState = 'dashboard' | 'entry' | 'advisor' | 'products';
+export type ViewState = 'dashboard' | 'entry' | 'products';
 
 export const MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',

@@ -41,9 +41,9 @@ Esta aplicación es una **Progressive Web App**. Puedes instalarla en tu disposi
 *   **Etiquetado**: Organiza por tags (Carnicería, Limpieza, etc.) para filtrar rápidamente al cargar gastos.
 *   **Análisis de Precios**: Detecta automáticamente si un producto ha subido por encima de la inflación real.
 
-### 5. Asistente Financiero IA (Gemini) 🤖
-*   Chat integrado con **Google Gemini 2.5 Flash**.
-*   Analiza tus tablas de datos locales para responder preguntas como: *"¿En qué estoy gastando demasiado?"* o *"¿Cuánto proyectas que ahorraré si bajo el super un 10%?"*.
+### 5. Importación Inteligente (IA) ✨
+*   **Reconocimiento de Texto**: Pega listas informales de gastos (ej: "Luz 2500, super 1500 ayer") y la IA los convertirá automáticamente en registros estructurados.
+*   **Powered by Google Gemini**: Utiliza la tecnología de Gemini para entender contexto, fechas y categorías.
 
 ---
 
@@ -83,7 +83,7 @@ Para obtener datos oficiales en tiempo real, debes conectar la aplicación al Ca
 
 1.  Clonar repositorio:
     ```bash
-    git clone https://github.com/tu-usuario/gastos-uy.git
+    git clone https://github.com/buscarons/gestor-de-gastos-domesticos.git
     ```
 2.  Instalar dependencias:
     ```bash
@@ -91,10 +91,10 @@ Para obtener datos oficiales en tiempo real, debes conectar la aplicación al Ca
     ```
 3.  Configurar API Key de Gemini:
     *   Crea un archivo `.env` en la raíz.
-    *   Agrega: `API_KEY=tu_api_key_de_google_ai_studio`
+    *   Agrega: `GEMINI_API_KEY=tu_api_key_de_google_ai_studio`
 4.  Ejecutar:
     ```bash
-    npm start
+    npm run dev
     ```
 
 ## 📄 Licencia
