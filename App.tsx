@@ -37,15 +37,41 @@ const App: React.FC = () => {
 
   // Load data on mount using StorageService
   useEffect(() => {
-    const loadAllData = () => {
-      setIsSetup(StorageService.getSetupStatus());
-      setData(StorageService.getExpenses());
-      setIncomeData(StorageService.getIncome());
-      setGlobalBaseBalance(StorageService.getBaseBalance());
-      setYearConfigs(StorageService.getYearConfigs());
-      setProducts(StorageService.getProducts());
-      setTags(StorageService.getTags());
-      setLoading(false);
+    const loadAllData = async () => {
+      try {
+        // Ensure we have a user (anonymous or otherwise) before loading data
+        await StorageService.ensureAuth();
+
+        const [
+          setupStatus,
+          expenses,
+          income,
+          baseBalance,
+          configs,
+          prods,
+          loadedTags
+        ] = await Promise.all([
+          StorageService.getSetupStatus(),
+          StorageService.getExpenses(),
+          StorageService.getIncome(),
+          StorageService.getBaseBalance(),
+          StorageService.getYearConfigs(),
+          StorageService.getProducts(),
+          StorageService.getTags()
+        ]);
+
+        setIsSetup(setupStatus);
+        setData(expenses);
+        setIncomeData(income);
+        setGlobalBaseBalance(baseBalance);
+        setYearConfigs(configs);
+        setProducts(prods);
+        setTags(loadedTags);
+      } catch (error) {
+        console.error("Failed to load data:", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     loadAllData();
@@ -103,54 +129,54 @@ const App: React.FC = () => {
 
   // --- HANDLERS ---
 
-  const completeSetup = () => {
+  const completeSetup = async () => {
     setIsSetup(true);
-    StorageService.completeSetup();
+    await StorageService.completeSetup();
   };
 
-  const handleManualSetup = (year: number, startMonthIndex: number) => {
+  const handleManualSetup = async (year: number, startMonthIndex: number) => {
     setSelectedYear(year);
     handleUpdateYearConfig(startMonthIndex, year);
-    completeSetup();
+    await completeSetup();
     setView('entry');
   };
 
-  const handleUpdateData = (yearData: ExpenseItem[]) => {
+  const handleUpdateData = async (yearData: ExpenseItem[]) => {
     const otherYearsData = data.filter(item => item.year !== selectedYear);
     const newData = [...otherYearsData, ...yearData];
     setData(newData);
-    StorageService.saveExpenses(newData);
+    await StorageService.saveExpenses(newData);
   };
 
-  const handleUpdateIncome = (yearIncome: IncomeItem[]) => {
+  const handleUpdateIncome = async (yearIncome: IncomeItem[]) => {
     const otherYearsIncome = incomeData.filter(item => item.year !== selectedYear);
     const newIncome = [...otherYearsIncome, ...yearIncome];
     setIncomeData(newIncome);
-    StorageService.saveIncome(newIncome);
+    await StorageService.saveIncome(newIncome);
   };
 
-  const handleUpdateOpeningBalance = (newOpeningBalance: number) => {
+  const handleUpdateOpeningBalance = async (newOpeningBalance: number) => {
     const newGlobalBase = newOpeningBalance - previousYearsAccumulated;
     setGlobalBaseBalance(newGlobalBase);
-    StorageService.saveBaseBalance(newGlobalBase);
+    await StorageService.saveBaseBalance(newGlobalBase);
   };
 
-  const handleUpdateYearConfig = (startMonthIndex: number, targetYear: number = selectedYear) => {
+  const handleUpdateYearConfig = async (startMonthIndex: number, targetYear: number = selectedYear) => {
     const otherConfigs = yearConfigs.filter(c => c.year !== targetYear);
     const newConfig = { year: targetYear, startMonthIndex };
     const newConfigs = [...otherConfigs, newConfig];
     setYearConfigs(newConfigs);
-    StorageService.saveYearConfigs(newConfigs);
+    await StorageService.saveYearConfigs(newConfigs);
   };
 
-  const handleUpdateProducts = (newProducts: Product[]) => {
+  const handleUpdateProducts = async (newProducts: Product[]) => {
     setProducts(newProducts);
-    StorageService.saveProducts(newProducts);
+    await StorageService.saveProducts(newProducts);
   };
 
-  const handleUpdateTags = (newTags: ProductTag[]) => {
+  const handleUpdateTags = async (newTags: ProductTag[]) => {
     setTags(newTags);
-    StorageService.saveTags(newTags);
+    await StorageService.saveTags(newTags);
   };
 
   const handleCleanInvalidData = (startIdx: number) => {
