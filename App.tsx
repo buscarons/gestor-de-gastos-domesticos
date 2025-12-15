@@ -1,0 +1,417 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { LayoutDashboard, Table2, BrainCircuit, Wallet, BookOpen, ChevronLeft, ChevronRight, Plus, ShoppingBag, Settings } from 'lucide-react';
+import { ExpenseItem, IncomeItem, ViewState, Product, ProductTag, YearConfig, MONTHS } from './types';
+import { Dashboard } from './components/Dashboard';
+import { ExpenseEntry } from './components/ExpenseEntry';
+import { IncomeEntry } from './components/IncomeEntry';
+import { AIAdvisor } from './components/AIAdvisor';
+import { CategoryHelp } from './components/CategoryHelp';
+import { QuickAddModal } from './components/QuickAddModal';
+import { ProductManager } from './components/ProductManager';
+import { WelcomeScreen } from './components/WelcomeScreen';
+import { YearSettingsModal } from './components/YearSettingsModal';
+import { StorageService } from './services/StorageService';
+
+const App: React.FC = () => {
+  const [view, setView] = useState<ViewState>('dashboard');
+  
+  // Data States
+  const [data, setData] = useState<ExpenseItem[]>([]);
+  const [incomeData, setIncomeData] = useState<IncomeItem[]>([]);
+  const [globalBaseBalance, setGlobalBaseBalance] = useState<number>(0); 
+  const [yearConfigs, setYearConfigs] = useState<YearConfig[]>([]);
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const [tags, setTags] = useState<ProductTag[]>([]);
+  
+  // UI States
+  const [loading, setLoading] = useState(true);
+  const [isSetup, setIsSetup] = useState(false); 
+  const [showHelp, setShowHelp] = useState(false);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showYearSettings, setShowYearSettings] = useState(false);
+  const [entryTab, setEntryTab] = useState<'expenses' | 'income'>('expenses');
+  
+  // Year state
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+
+  // Load data on mount using StorageService
+  useEffect(() => {
+    const loadAllData = () => {
+      setIsSetup(StorageService.getSetupStatus());
+      setData(StorageService.getExpenses());
+      setIncomeData(StorageService.getIncome());
+      setGlobalBaseBalance(StorageService.getBaseBalance());
+      setYearConfigs(StorageService.getYearConfigs());
+      setProducts(StorageService.getProducts());
+      setTags(StorageService.getTags());
+      setLoading(false);
+    };
+
+    loadAllData();
+  }, []);
+
+  // --- DERIVED DATA & HELPERS ---
+
+  // Dynamic Categories from Data
+  const availableCategories = useMemo(() => {
+    const cats = new Set(data.map(i => i.category));
+    const list = Array.from(cats);
+    return list.length > 0 ? list : [];
+  }, [data]);
+
+  const currentYearData = useMemo(() => {
+    return data.filter(item => item.year === selectedYear);
+  }, [data, selectedYear]);
+
+  const previousYearData = useMemo(() => {
+    return data.filter(item => item.year === selectedYear - 1);
+  }, [data, selectedYear]);
+
+  const currentYearIncome = useMemo(() => {
+    return incomeData.filter(item => item.year === selectedYear);
+  }, [incomeData, selectedYear]);
+
+  const previousYearIncome = useMemo(() => {
+    return incomeData.filter(item => item.year === selectedYear - 1);
+  }, [incomeData, selectedYear]);
+
+  const currentYearConfig = useMemo(() => {
+    return yearConfigs.find(c => c.year === selectedYear) || { year: selectedYear, startMonthIndex: 0 };
+  }, [yearConfigs, selectedYear]);
+
+  // CALCULATE NET SAVINGS FROM PREVIOUS YEARS
+  const previousYearsAccumulated = useMemo(() => {
+    let accumulated = 0;
+    const allYears = new Set([...data.map(i => i.year), ...incomeData.map(i => i.year)]);
+    const pastYears = Array.from(allYears).filter(y => y < selectedYear);
+
+    pastYears.forEach(year => {
+       const yearExp = data.filter(i => i.year === year);
+       const yearInc = incomeData.filter(i => i.year === year);
+       
+       const totalExp = yearExp.reduce((acc, item) => acc + item.amounts.reduce((a,b)=>a+b,0), 0);
+       const totalInc = yearInc.reduce((acc, item) => acc + item.amounts.reduce((a,b)=>a+b,0), 0);
+       
+       accumulated += (totalInc - totalExp);
+    });
+
+    return accumulated;
+  }, [data, incomeData, selectedYear]);
+
+  const openingBalanceForSelectedYear = globalBaseBalance + previousYearsAccumulated;
+
+  // --- HANDLERS ---
+
+  const completeSetup = () => {
+    setIsSetup(true);
+    StorageService.completeSetup();
+  };
+
+  const handleManualSetup = (year: number, startMonthIndex: number) => {
+    setSelectedYear(year);
+    handleUpdateYearConfig(startMonthIndex, year);
+    completeSetup();
+    setView('entry');
+  };
+
+  const handleUpdateData = (yearData: ExpenseItem[]) => {
+    const otherYearsData = data.filter(item => item.year !== selectedYear);
+    const newData = [...otherYearsData, ...yearData];
+    setData(newData);
+    StorageService.saveExpenses(newData);
+  };
+
+  const handleUpdateIncome = (yearIncome: IncomeItem[]) => {
+    const otherYearsIncome = incomeData.filter(item => item.year !== selectedYear);
+    const newIncome = [...otherYearsIncome, ...yearIncome];
+    setIncomeData(newIncome);
+    StorageService.saveIncome(newIncome);
+  };
+
+  const handleUpdateOpeningBalance = (newOpeningBalance: number) => {
+    const newGlobalBase = newOpeningBalance - previousYearsAccumulated;
+    setGlobalBaseBalance(newGlobalBase);
+    StorageService.saveBaseBalance(newGlobalBase);
+  };
+
+  const handleUpdateYearConfig = (startMonthIndex: number, targetYear: number = selectedYear) => {
+    const otherConfigs = yearConfigs.filter(c => c.year !== targetYear);
+    const newConfig = { year: targetYear, startMonthIndex };
+    const newConfigs = [...otherConfigs, newConfig];
+    setYearConfigs(newConfigs);
+    StorageService.saveYearConfigs(newConfigs);
+  };
+
+  const handleUpdateProducts = (newProducts: Product[]) => {
+    setProducts(newProducts);
+    StorageService.saveProducts(newProducts);
+  };
+
+  const handleUpdateTags = (newTags: ProductTag[]) => {
+    setTags(newTags);
+    StorageService.saveTags(newTags);
+  };
+
+  if (loading) return <div className="h-screen w-full flex items-center justify-center">Cargando...</div>;
+
+  // --- WELCOME SCREEN (MANUAL SETUP) ---
+  if (!isSetup) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+         <WelcomeScreen 
+            onManualStart={handleManualSetup}
+            defaultYear={selectedYear} 
+         />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50 relative">
+      <CategoryHelp isOpen={showHelp} onClose={() => setShowHelp(false)} />
+      
+      <YearSettingsModal 
+        isOpen={showYearSettings}
+        onClose={() => setShowYearSettings(false)}
+        year={selectedYear}
+        currentStartMonthIndex={currentYearConfig.startMonthIndex}
+        onSave={(idx) => handleUpdateYearConfig(idx)}
+      />
+
+      <QuickAddModal 
+        isOpen={showQuickAdd} 
+        onClose={() => setShowQuickAdd(false)}
+        data={currentYearData}
+        year={selectedYear}
+        onSave={(updated) => {
+          handleUpdateData(updated);
+        }}
+      />
+      
+      {/* Sidebar Navigation */}
+      <aside className="w-full md:w-64 bg-white border-r border-gray-200 flex-shrink-0 sticky top-0 md:h-screen z-20 flex flex-col">
+        <div className="p-6 flex items-center gap-3 border-b border-gray-100">
+          <div className="bg-blue-600 p-2 rounded-lg text-white">
+            <Wallet size={24} />
+          </div>
+          <div>
+            <h1 className="font-bold text-gray-900 leading-tight">Mis Finanzas</h1>
+            <p className="text-xs text-gray-500">Gestión Integral</p>
+          </div>
+        </div>
+        
+        <nav className="p-4 space-y-1 flex-1">
+          <button
+            onClick={() => setView('dashboard')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              view === 'dashboard' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <LayoutDashboard size={18} />
+            Estadísticas
+          </button>
+          
+          <button
+            onClick={() => setView('entry')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              view === 'entry' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <Table2 size={18} />
+            Registro (Gastos/Ingresos)
+          </button>
+          
+          <button
+            onClick={() => setView('products')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              view === 'products' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <ShoppingBag size={18} />
+            Catálogo de Productos
+          </button>
+
+          <button
+            onClick={() => setView('advisor')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              view === 'advisor' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <BrainCircuit size={18} />
+            Asistente IA
+          </button>
+
+          <div className="pt-4 mt-4 border-t border-gray-100">
+             <button
+              onClick={() => setShowHelp(true)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-colors"
+            >
+              <BookOpen size={18} />
+              Glosario de Categorías
+            </button>
+          </div>
+        </nav>
+
+        <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+          <p className="text-xs text-gray-400 text-center">
+            Datos guardados localmente.
+          </p>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">
+              {view === 'dashboard' && 'Resumen Financiero'}
+              {view === 'entry' && 'Libro Diario'}
+              {view === 'products' && 'Mi Catálogo'}
+              {view === 'advisor' && 'Análisis Inteligente'}
+            </h2>
+            <p className="text-gray-500 text-sm mt-1">
+              {view === 'dashboard' && `Visualiza el flujo de caja y proyecciones de ${selectedYear}.`}
+              {view === 'entry' && `Administra tus ingresos y gastos para el año ${selectedYear}.`}
+              {view === 'products' && `Gestiona tus productos frecuentes para carga rápida.`}
+              {view === 'advisor' && `Consulta a la IA sobre tus patrones de ${selectedYear}.`}
+            </p>
+          </div>
+          
+          {view !== 'products' && (
+            <div className="flex items-center bg-white rounded-lg shadow-sm border border-gray-200 p-1">
+              <button 
+                onClick={() => setSelectedYear(y => y - 1)}
+                className="p-2 hover:bg-gray-100 rounded-md text-gray-600"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <span className="px-4 font-bold text-gray-800 min-w-[80px] text-center select-none">
+                {selectedYear}
+              </span>
+              <button 
+                onClick={() => setSelectedYear(y => y + 1)}
+                className="p-2 hover:bg-gray-100 rounded-md text-gray-600"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          )}
+        </header>
+
+        {view === 'dashboard' && (
+          <Dashboard 
+            data={currentYearData} 
+            incomeData={currentYearIncome}
+            year={selectedYear} 
+            initialSavings={openingBalanceForSelectedYear} 
+            startMonthIndex={currentYearConfig.startMonthIndex} 
+          />
+        )}
+        
+        {view === 'entry' && (
+          <div className="space-y-6">
+            {/* Header: Tabs + Global Config */}
+            <div className="flex justify-between items-center">
+              <div className="flex gap-1 bg-gray-200 p-1 rounded-lg w-fit">
+                <button
+                  onClick={() => setEntryTab('expenses')}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    entryTab === 'expenses' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  Gastos
+                </button>
+                <button
+                  onClick={() => setEntryTab('income')}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    entryTab === 'income' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  Ingresos y Ahorros
+                </button>
+              </div>
+
+              {/* Global Year Config Button */}
+              <button 
+                onClick={() => setShowYearSettings(true)}
+                className="flex items-center gap-2 text-xs font-medium text-gray-500 hover:text-blue-600 bg-white border border-gray-200 hover:border-blue-300 px-3 py-1.5 rounded-lg transition-colors"
+                title="Corregir mes de inicio de datos"
+              >
+                <Settings size={14} />
+                <span>Inicio: {MONTHS[currentYearConfig.startMonthIndex]}</span>
+              </button>
+            </div>
+
+            {currentYearData.length === 0 && entryTab === 'expenses' && (
+               <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex items-start gap-3 mb-4">
+                  <div className="p-1.5 bg-blue-100 text-blue-600 rounded-full mt-0.5"><Plus size={16}/></div>
+                  <div>
+                    <h4 className="font-bold text-blue-800 text-sm">Comienza a registrar</h4>
+                    <p className="text-xs text-blue-600 mt-1">Tu tabla está vacía. Usa el formulario de abajo para agregar tu primera categoría (ej. "Supermercado") y empezar.</p>
+                  </div>
+               </div>
+            )}
+
+            {entryTab === 'expenses' ? (
+              <ExpenseEntry 
+                data={currentYearData}
+                previousYearData={previousYearData}
+                categories={availableCategories} 
+                onUpdate={handleUpdateData} 
+                year={selectedYear}
+                products={products}
+                onUpdateProducts={handleUpdateProducts}
+                startMonthIndex={currentYearConfig.startMonthIndex} 
+              />
+            ) : (
+              <IncomeEntry 
+                data={currentYearIncome}
+                previousYearData={previousYearIncome}
+                onUpdate={handleUpdateIncome}
+                year={selectedYear}
+                startMonthIndex={currentYearConfig.startMonthIndex}
+                openingBalance={openingBalanceForSelectedYear}
+                previousYearsAccumulated={previousYearsAccumulated}
+                onUpdateOpeningBalance={handleUpdateOpeningBalance}
+              />
+            )}
+          </div>
+        )}
+        
+        {view === 'products' && (
+          <ProductManager 
+            products={products} 
+            tags={tags} 
+            onUpdateProducts={handleUpdateProducts}
+            onUpdateTags={handleUpdateTags}
+            allExpenses={data} 
+          />
+        )}
+        
+        {view === 'advisor' && (
+          <AIAdvisor 
+            data={currentYearData} 
+            configText={`Considera que para el año ${selectedYear}, los datos válidos comienzan en ${MONTHS[currentYearConfig.startMonthIndex]}.`}
+          />
+        )}
+      </main>
+
+      {/* Floating Action Button for Quick Add */}
+      {currentYearData.length > 0 && view !== 'products' && view !== 'advisor' && (
+        <button
+          onClick={() => setShowQuickAdd(true)}
+          className="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 z-40 group"
+          title="Registro Rápido de Gastos"
+        >
+          <Plus size={28} />
+          <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+            Agregar Gasto
+          </span>
+        </button>
+      )}
+    </div>
+  );
+};
+
+export default App;

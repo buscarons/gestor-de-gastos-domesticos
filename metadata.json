@@ -1,0 +1,5 @@
+{
+  "name": "Gestor de Gastos Domésticos",
+  "description": "Una aplicación completa para registrar, visualizar y analizar gastos mensuales del hogar con ayuda de IA.",
+  "requestFramePermissions": []
+}
