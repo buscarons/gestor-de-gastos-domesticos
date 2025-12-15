@@ -11,6 +11,9 @@ import { ProductManager } from './components/ProductManager';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { YearSettingsModal } from './components/YearSettingsModal';
 import { StorageService } from './services/StorageService';
+import { LoginModal } from './components/LoginModal';
+import { ConfirmationModal } from './components/ConfirmationModal';
+import { User, LogIn, LogOut } from 'lucide-react';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('dashboard');
@@ -33,51 +36,70 @@ const App: React.FC = () => {
   const [entryTab, setEntryTab] = useState<'expenses' | 'income'>('expenses');
   const [initError, setInitError] = useState<string | null>(null);
 
+  // Auth State
+  const [showLogin, setShowLogin] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+
   // Year state
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   // Load data on mount using StorageService
+  const loadAllData = async () => {
+    setLoading(true);
+    try {
+      // Ensure we have a user (anonymous or otherwise) before loading data
+      // If we are already logged in via Email, this just confirms it.
+      await StorageService.ensureAuth();
+
+      const user = await StorageService.getSessionUser();
+      setCurrentUserEmail(user?.email || null); // If email is null, it's anonymous usually
+
+      const [
+        setupStatus,
+        expenses,
+        income,
+        baseBalance,
+        configs,
+        prods,
+        loadedTags
+      ] = await Promise.all([
+        StorageService.getSetupStatus(),
+        StorageService.getExpenses(),
+        StorageService.getIncome(),
+        StorageService.getBaseBalance(),
+        StorageService.getYearConfigs(),
+        StorageService.getProducts(),
+        StorageService.getTags()
+      ]);
+
+      setIsSetup(setupStatus);
+      setData(expenses);
+      setIncomeData(income);
+      setGlobalBaseBalance(baseBalance);
+      setYearConfigs(configs);
+      setProducts(prods);
+      setTags(loadedTags);
+    } catch (error: any) {
+      console.error("Failed to load data:", error);
+      setInitError(error.message || "Error desconocido al iniciar la aplicación.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadAllData = async () => {
-      try {
-        // Ensure we have a user (anonymous or otherwise) before loading data
-        await StorageService.ensureAuth();
-
-        const [
-          setupStatus,
-          expenses,
-          income,
-          baseBalance,
-          configs,
-          prods,
-          loadedTags
-        ] = await Promise.all([
-          StorageService.getSetupStatus(),
-          StorageService.getExpenses(),
-          StorageService.getIncome(),
-          StorageService.getBaseBalance(),
-          StorageService.getYearConfigs(),
-          StorageService.getProducts(),
-          StorageService.getTags()
-        ]);
-
-        setIsSetup(setupStatus);
-        setData(expenses);
-        setIncomeData(income);
-        setGlobalBaseBalance(baseBalance);
-        setYearConfigs(configs);
-        setProducts(prods);
-        setTags(loadedTags);
-      } catch (error: any) {
-        console.error("Failed to load data:", error);
-        setInitError(error.message || "Error desconocido al iniciar la aplicación.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadAllData();
   }, []);
+
+  const handleLogout = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const performLogout = async () => {
+    await StorageService.signOut();
+    window.location.reload();
+  };
 
   // --- DERIVED DATA & HELPERS ---
 
@@ -312,11 +334,56 @@ const App: React.FC = () => {
         </nav>
 
         <div className="p-4 border-t border-gray-100 bg-gray-50/50">
-          <p className="text-xs text-gray-400 text-center">
-            Datos guardados localmente.
-          </p>
+          <div className="flex items-center gap-3 mb-3">
+            <div className={`p-2 rounded-full ${currentUserEmail ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>
+              <User size={16} />
+            </div>
+            <div className="overflow-hidden">
+              <p className="text-xs font-bold text-gray-700 truncate">
+                {currentUserEmail ? 'Usuario Conectado' : 'Modo Invitado'}
+              </p>
+              <p className="text-[10px] text-gray-500 truncate" title={currentUserEmail || 'Datos locales'}>
+                {currentUserEmail || 'Datos temporales'}
+              </p>
+            </div>
+          </div>
+
+          {currentUserEmail ? (
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center gap-2 text-xs text-red-600 hover:bg-red-50 p-2 rounded border border-transparent hover:border-red-100 transition-all font-medium"
+            >
+              <LogOut size={14} /> Cerrar Sesión
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowLogin(true)}
+              className="w-full flex items-center justify-center gap-2 text-xs text-blue-600 hover:bg-blue-50 p-2 rounded border border-transparent hover:border-blue-100 transition-all font-medium"
+            >
+              <LogIn size={14} /> Iniciar Sesión
+            </button>
+          )}
         </div>
       </aside>
+
+      <LoginModal
+        isOpen={showLogin}
+        onClose={() => setShowLogin(false)}
+        onLoginSuccess={() => {
+          // Reload everything to fetch data for the new user
+          loadAllData();
+        }}
+      />
+
+      <ConfirmationModal
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={performLogout}
+        title="Cerrar Sesión"
+        message="¿Estás seguro de que deseas salir? Volverás al modo invitado."
+        confirmLabel="Cerrar Sesión"
+        isDestructive={true}
+      />
 
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen">

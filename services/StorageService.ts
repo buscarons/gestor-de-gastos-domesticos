@@ -47,6 +47,25 @@ export const StorageService = {
     return data.user.id;
   },
 
+  signInWithEmail: async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw error;
+    return data.user;
+  },
+
+  signOut: async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+  },
+
+  getSessionUser: async () => {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user || null;
+  },
+
   // --- SETUP ---
   getSetupStatus: async (): Promise<boolean> => {
     const user = await StorageService.getCurrentUser();
