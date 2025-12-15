@@ -29,19 +29,22 @@ export const StorageService = {
     return data.session?.user || null;
   },
 
-  ensureAuth: async (): Promise<string | null> => {
+  ensureAuth: async (): Promise<string> => {
     const user = await StorageService.getCurrentUser();
     if (user) return user.id;
 
-    // Try anonymous sign in (requires 'Enable Anonymous Sign-ins' in Supabase Auth settings)
+    // Try anonymous sign in
     const { data, error } = await supabase.auth.signInAnonymously();
     if (error) {
       console.error("Error signing in anonymously:", error);
-      // Fallback: Use a fixed "local_user" UUID if auth fails? No, RLS will block it.
-      // We'll hope anonymous auth is enabled or the user will log in.
-      return null;
+      throw new Error(`Error de Autenticación: ${error.message}. Verifica que 'Enable Anonymous Sign-ins' esté activado en Supabase.`);
     }
-    return data.user?.id || null;
+
+    if (!data.user) {
+      throw new Error("No se pudo obtener el usuario anónimo.");
+    }
+
+    return data.user.id;
   },
 
   // --- SETUP ---

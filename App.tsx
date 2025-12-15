@@ -31,6 +31,7 @@ const App: React.FC = () => {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showYearSettings, setShowYearSettings] = useState(false);
   const [entryTab, setEntryTab] = useState<'expenses' | 'income'>('expenses');
+  const [initError, setInitError] = useState<string | null>(null);
 
   // Year state
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
@@ -67,8 +68,9 @@ const App: React.FC = () => {
         setYearConfigs(configs);
         setProducts(prods);
         setTags(loadedTags);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to load data:", error);
+        setInitError(error.message || "Error desconocido al iniciar la aplicación.");
       } finally {
         setLoading(false);
       }
@@ -203,6 +205,23 @@ const App: React.FC = () => {
   };
 
   if (loading) return <div className="h-screen w-full flex items-center justify-center">Cargando...</div>;
+
+  if (initError) {
+    return (
+      <div className="h-screen w-full flex flex-col items-center justify-center p-8 text-center bg-red-50">
+        <div className="bg-white p-6 rounded-xl shadow-lg border border-red-100 max-w-md">
+          <h2 className="text-xl font-bold text-red-600 mb-2">Error de Conexión</h2>
+          <p className="text-gray-600 mb-4">{initError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // --- WELCOME SCREEN (MANUAL SETUP) ---
   if (!isSetup) {
