@@ -153,6 +153,29 @@ const App: React.FC = () => {
     StorageService.saveTags(newTags);
   };
 
+  const handleCleanInvalidData = (startIdx: number) => {
+    // Corrects data for the *selectedYear* by zeroing out months before startIdx
+    const updatedYearData = currentYearData.map(item => {
+      const newAmounts = [...item.amounts];
+      let hasChanges = false;
+
+      for (let i = 0; i < startIdx; i++) {
+        if (newAmounts[i] !== 0) {
+          newAmounts[i] = 0;
+          hasChanges = true;
+        }
+      }
+
+      return hasChanges ? { ...item, amounts: newAmounts } : item;
+    });
+
+    const changed = updatedYearData.some((item, i) => item !== currentYearData[i]);
+    if (changed) {
+      handleUpdateData(updatedYearData);
+    }
+    return changed;
+  };
+
   if (loading) return <div className="h-screen w-full flex items-center justify-center">Cargando...</div>;
 
   // --- WELCOME SCREEN (MANUAL SETUP) ---
@@ -177,6 +200,7 @@ const App: React.FC = () => {
         year={selectedYear}
         currentStartMonthIndex={currentYearConfig.startMonthIndex}
         onSave={(idx) => handleUpdateYearConfig(idx)}
+        onCleanInvalidData={() => handleCleanInvalidData(currentYearConfig.startMonthIndex)}
       />
 
       <QuickAddModal

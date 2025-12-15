@@ -7,16 +7,18 @@ interface SmartImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   year: number;
+  startMonthIndex: number;
   onImport: (items: ParsedExpense[]) => void;
 }
 
-export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onClose, year, onImport }) => {
+export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onClose, year, startMonthIndex, onImport }) => {
   const [step, setStep] = useState<'input' | 'preview'>('input');
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [defaultMonth, setDefaultMonth] = useState(new Date().getMonth());
+  const [defaultMonth, setDefaultMonth] = useState(new Date().getMonth() >= startMonthIndex ? new Date().getMonth() : startMonthIndex);
   const [parsedItems, setParsedItems] = useState<ParsedExpense[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [removedCount, setRemovedCount] = useState(0);
 
   if (!isOpen) return null;
 
@@ -24,18 +26,30 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
     if (!inputText.trim()) return;
     setIsLoading(true);
     setError(null);
+    setRemovedCount(0);
     try {
-      const result = await parseExpensesFromText(inputText, defaultMonth, year);
-      
-      // Post-process: Fill in null months with default
-      const processed = result.map(item => ({
-        ...item,
-        monthIndex: item.monthIndex === null ? defaultMonth : item.monthIndex
-      }));
+      // Pass startMonthIndex to AI service
+      const result = await parseExpensesFromText(inputText, defaultMonth, year, startMonthIndex);
+
+      // Post-process: Fill in null months with default and HARD FILTER invalid months
+      const processed: ParsedExpense[] = [];
+      let skipped = 0;
+
+      result.forEach(item => {
+        const effectiveMonth = item.monthIndex === null ? defaultMonth : item.monthIndex;
+
+        if (effectiveMonth >= startMonthIndex) {
+          processed.push({ ...item, monthIndex: effectiveMonth });
+        } else {
+          skipped++;
+        }
+      });
 
       setParsedItems(processed);
+      setRemovedCount(skipped);
       setStep('preview');
     } catch (e) {
+      console.error(e);
       setError("No se pudo entender el texto. Intenta ser más claro o verifica tu conexión.");
     } finally {
       setIsLoading(false);
@@ -68,7 +82,7 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
   return (
     <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        
+
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white flex justify-between items-start shrink-0">
           <div className="flex items-center gap-3">
@@ -109,12 +123,14 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
                   {MONTHS.map((m, idx) => (
                     <button
                       key={m}
-                      onClick={() => setDefaultMonth(idx)}
-                      className={`text-xs py-2 rounded-md border transition-all ${
-                        defaultMonth === idx 
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' 
-                          : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
-                      }`}
+                      onClick={() => idx >= startMonthIndex && setDefaultMonth(idx)}
+                      disabled={idx < startMonthIndex}
+                      className={`text-xs py-2 rounded-md border transition-all ${defaultMonth === idx
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                          : idx < startMonthIndex
+                            ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
+                            : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
+                        }`}
                     >
                       {m.substring(0, 3)}
                     </button>
@@ -137,6 +153,13 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
                 </button>
               </div>
 
+              {removedCount > 0 && (
+                <div className="bg-orange-50 text-orange-700 text-xs p-3 rounded-lg border border-orange-100 flex items-center gap-2">
+                  <AlertCircle size={16} />
+                  <span>Se filtraron <b>{removedCount} gastos</b> porque corresponden a meses anteriores al inicio ({MONTHS[startMonthIndex]}).</span>
+                </div>
+              )}
+
               <div className="border rounded-xl overflow-hidden">
                 <table className="w-full text-sm text-left">
                   <thead className="bg-gray-50 text-gray-500 font-medium border-b">
@@ -152,31 +175,31 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
                     {parsedItems.map((item, idx) => (
                       <tr key={idx} className="group hover:bg-gray-50">
                         <td className="p-2">
-                          <input 
-                            value={item.name} 
+                          <input
+                            value={item.name}
                             onChange={(e) => updateItem(idx, 'name', e.target.value)}
                             className="w-full bg-transparent border-b border-transparent focus:border-indigo-300 outline-none"
                           />
                         </td>
                         <td className="p-2">
-                           <select 
-                             value={item.category}
-                             onChange={(e) => updateItem(idx, 'category', e.target.value)}
-                             className="w-full bg-transparent text-xs outline-none"
-                           >
-                             {STANDARD_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                           </select>
+                          <select
+                            value={item.category}
+                            onChange={(e) => updateItem(idx, 'category', e.target.value)}
+                            className="w-full bg-transparent text-xs outline-none"
+                          >
+                            {STANDARD_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
                         </td>
                         <td className="p-2">
-                          <input 
+                          <input
                             type="number"
-                            value={item.amount} 
+                            value={item.amount}
                             onChange={(e) => updateItem(idx, 'amount', parseFloat(e.target.value))}
                             className="w-full bg-transparent border-b border-transparent focus:border-indigo-300 outline-none font-medium"
                           />
                         </td>
                         <td className="p-2 text-xs text-gray-500">
-                          {MONTHS[item.monthIndex || defaultMonth].substring(0,3)}
+                          {MONTHS[item.monthIndex || defaultMonth].substring(0, 3)}
                         </td>
                         <td className="p-2 text-center">
                           <button onClick={() => removeItem(idx)} className="text-gray-300 hover:text-red-500">
@@ -188,7 +211,7 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
                   </tbody>
                 </table>
               </div>
-              
+
               {parsedItems.length === 0 && (
                 <p className="text-center text-gray-400 py-4">No se encontraron gastos válidos.</p>
               )}
@@ -204,11 +227,11 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
               disabled={isLoading || !inputText.trim()}
               className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center gap-2"
             >
-              {isLoading ? <Loader2 size={18} className="animate-spin"/> : <Sparkles size={18} />}
+              {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
               {isLoading ? 'Analizando...' : 'Analizar Texto'}
             </button>
           ) : (
-             <button
+            <button
               onClick={handleConfirm}
               disabled={parsedItems.length === 0}
               className="bg-green-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-green-700 disabled:opacity-50 transition-all flex items-center gap-2"
