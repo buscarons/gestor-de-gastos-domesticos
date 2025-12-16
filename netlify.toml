@@ -2,16 +2,16 @@
   command = "npm run build"
   publish = "dist"
 
-# Handle SPA Routing (React Router)
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
-# Proxy for Inflation API to bypass CORS
+# Proxy for Inflation API (MUST BE FIRST to avoid being caught by SPA rule)
 [[redirects]]
   from = "/api/inflation"
   to = "https://catalogodatos.gub.uy/api/3/action/datastore_search?resource_id=8e207908-1175-4c07-9e0c-352227d894e7&q=IPC"
   status = 200
   force = true
   headers = {X-From = "Netlify Proxy"}
+
+# Handle SPA Routing (React Router) - Catch-all for everything else
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
