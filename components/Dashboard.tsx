@@ -466,9 +466,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, incomeData, yearConf
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* CHART 1: Cash Flow (2/3 width) */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-96 flex flex-col">
+        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col min-h-[400px]">
           <h3 className="text-lg font-semibold text-gray-800 mb-4 shrink-0">Flujo de Caja (Ingresos vs Gastos)</h3>
-          <div className="flex-1 min-h-0 flex flex-col">
+          <div className="flex-1 w-full min-h-0">
             <ResponsiveContainer width="100%" height="100%" minHeight={200}>
               <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
@@ -488,10 +488,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, incomeData, yearConf
         </div>
 
         {/* CHART 2: Category Breakdown (1/3 width) */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-96 flex flex-col">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col min-h-[400px]">
           <h3 className="text-lg font-semibold text-gray-800 mb-2 shrink-0">Distribución de Gastos</h3>
           <p className="text-xs text-gray-400 mb-4 shrink-0">Datos visibles (incluye mes actual)</p>
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 w-full min-h-0">
             <ResponsiveContainer width="100%" height="100%" minHeight={200}>
               <PieChart>
                 <Pie
@@ -516,7 +516,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, incomeData, yearConf
       </div>
 
       {/* CHART 3: Savings Projection (Full Width) */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-96 flex flex-col">
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col min-h-[400px]">
         <div className="flex justify-between items-start mb-4 shrink-0">
           <div>
             <h3 className="text-lg font-semibold text-gray-800">Evolución y Proyección de Ahorros</h3>
@@ -549,7 +549,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, incomeData, yearConf
             </div>
           </div>
         </div>
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 w-full min-h-0">
           <ResponsiveContainer width="100%" height="100%" minHeight={200}>
             <ComposedChart data={projectionData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />

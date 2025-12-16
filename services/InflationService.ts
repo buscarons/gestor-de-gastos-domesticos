@@ -101,13 +101,17 @@ const mapCacheToRates = (records: any[], year: number): number[] => {
 // We implement a generic search for "IPC" rows.
 const fetchFromOpenDataAPI = async (year: number): Promise<any[]> => {
   try {
-    // CORS Hack: Skip external API on localhost to prevent console spam
+    // CORS Hack: Skip external API on localhost to avoid console spam (since proxy only works on Netlify)
+    // But in production (Netlify), use the proxy.
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      console.warn("Skipping Open Data API on localhost to avoid CORS errors. Using fallback/cache.");
+      console.warn("Skipping Open Data API on localhost. Using fallback/cache.");
       return [];
     }
 
-    const url = `${API_CONFIG.BASE_URL}?resource_id=${API_CONFIG.RESOURCE_ID}&q=IPC`; // Query for IPC rows
+    // Use relative path - Netlify will proxy this to the real API
+    const url = "/api/inflation";
+    // const url = `${API_CONFIG.BASE_URL}?resource_id=${API_CONFIG.RESOURCE_ID}&q=IPC`; 
+
     const res = await fetch(url);
     if (!res.ok) throw new Error("API Network Error");
 
