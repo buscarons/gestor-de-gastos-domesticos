@@ -75,7 +75,7 @@ export const StorageService = {
       .from('app_settings')
       .select('setup_completed')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (error || !data) return false;
     return data.setup_completed;
@@ -213,7 +213,7 @@ export const StorageService = {
       .from('savings_settings')
       .select('base_balance')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (error || !data) return 0;
     return Number(data.base_balance);
@@ -298,6 +298,21 @@ export const StorageService = {
       tag_id: p.tagId
     }));
 
+    // DEBUG: Validate Foreign Keys
+    if (toUpsert.length > 0) {
+      console.log("StorageService: Saving Products...", toUpsert);
+      const sampleTagId = toUpsert[0].tag_id;
+      if (sampleTagId) {
+        const { data: tagCheck } = await supabase.from('product_tags').select('id').eq('id', sampleTagId);
+        console.log(`StorageService: Checking tag ${sampleTagId} existence:`, tagCheck);
+        if (!tagCheck || tagCheck.length === 0) {
+          console.error(`StorageService: CRITICAL - Tag ${sampleTagId} NOT FOUND in DB for user ${user.id}. Aborting save to prevent FK error.`);
+          // alert("Error de consistencia: La etiqueta seleccionada no existe en la base de datos. Recarga la página.");
+          // return; // Optional: Stop to prevent the error, or let it fail to see the real DB error.
+        }
+      }
+    }
+
     const { error } = await supabase.from('products').upsert(toUpsert);
     if (error) console.error("Error saving products", error);
   },
@@ -305,10 +320,47 @@ export const StorageService = {
   // --- TAGS ---
   getTags: async (): Promise<ProductTag[]> => {
     const { data, error } = await supabase.from('product_tags').select('*');
-    if (error) {
-      return DEFAULT_TAGS;
+
+    // If DB is empty, seed defaults
+    if (!error && (!data || data.length === 0)) {
+      try {
+        const user = await StorageService.getCurrentUser();
+        if (user) {
+          console.log("StorageService: Seeding Default Tags for user", user.id);
+          // Prepare defaults without IDs (let DB generate UUIDs)
+          const toInsert = DEFAULT_TAGS.map(t => ({
+            user_id: user.id,
+            name: t.name,
+            emoji: t.emoji
+          }));
+
+          const { error: insertError } = await supabase.from('product_tags').insert(toInsert);
+          if (insertError) {
+            console.error("StorageService: Error inserting default tags:", insertError);
+            throw insertError;
+          }
+
+          // Re-fetch to get the real UUIDs
+          const { data: seeded, error: fetchError } = await supabase.from('product_tags').select('*');
+
+          if (fetchError) console.error("StorageService: Error fetching valid tags after seed:", fetchError);
+
+          if (seeded && seeded.length > 0) {
+            return seeded.map((row: any) => ({
+              id: row.id,
+              name: row.name,
+              emoji: row.emoji
+            }));
+          }
+        } else {
+          console.warn("StorageService: Cannot seed tags, no user found.");
+        }
+      } catch (e) {
+        console.error("StorageService: Unexpected error during tag seeding:", e);
+      }
     }
-    if (!data || data.length === 0) return DEFAULT_TAGS;
+
+    if (error || !data) return [];
 
     return data.map((row: any) => ({
       id: row.id,

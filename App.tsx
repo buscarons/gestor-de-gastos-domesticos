@@ -428,9 +428,11 @@ const App: React.FC = () => {
           <Dashboard
             data={currentYearData}
             incomeData={currentYearIncome}
-            year={selectedYear}
-            initialSavings={openingBalanceForSelectedYear}
-            startMonthIndex={currentYearConfig.startMonthIndex}
+            yearConfig={{
+              year: selectedYear,
+              startMonthIndex: currentYearConfig.startMonthIndex
+            }}
+            baseBalance={openingBalanceForSelectedYear}
           />
         )}
 
