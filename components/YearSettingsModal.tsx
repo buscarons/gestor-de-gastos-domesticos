@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Calendar, Check } from 'lucide-react';
 import { MONTHS } from '../types';
+import { ConfirmationModal } from './ConfirmationModal';
 
 interface YearSettingsModalProps {
   isOpen: boolean;
@@ -81,7 +82,7 @@ export const YearSettingsModal: React.FC<YearSettingsModalProps> = ({
                 </div>
               )}
 
-              {feedback === 'idle' && !showConfirm && (
+              {feedback === 'idle' && (
                 <button
                   onClick={() => setShowConfirm(true)}
                   className="w-full py-2 px-4 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg border border-red-200 transition-colors flex items-center justify-center gap-2"
@@ -90,30 +91,15 @@ export const YearSettingsModal: React.FC<YearSettingsModalProps> = ({
                 </button>
               )}
 
-              {feedback === 'idle' && showConfirm && (
-                <div className="bg-red-50 p-4 rounded-lg border border-red-100 animate-fade-in">
-                  <p className="text-xs font-bold text-red-800 mb-2">
-                    ¿Estás seguro?
-                  </p>
-                  <p className="text-xs text-red-600 mb-3">
-                    Se eliminarán permanentemente todos los gastos registrados en los meses anteriores a <b>{MONTHS[currentStartMonthIndex]}</b>.
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setShowConfirm(false)}
-                      className="flex-1 py-1.5 px-3 bg-white text-gray-600 text-xs font-medium rounded border border-gray-200 hover:bg-gray-50"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={handleClean}
-                      className="flex-1 py-1.5 px-3 bg-red-600 text-white text-xs font-bold rounded hover:bg-red-700 shadow-sm"
-                    >
-                      Confirmar Limpieza
-                    </button>
-                  </div>
-                </div>
-              )}
+              <ConfirmationModal
+                isOpen={showConfirm}
+                onClose={() => setShowConfirm(false)}
+                onConfirm={handleClean}
+                title="¿Estás seguro?"
+                message={`Se eliminarán permanentemente todos los gastos registrados en los meses anteriores a ${MONTHS[currentStartMonthIndex]}.`}
+                isDestructive={true}
+                confirmLabel="Confirmar Limpieza"
+              />
             </div>
           )}
 

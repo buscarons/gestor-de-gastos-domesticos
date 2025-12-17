@@ -3,6 +3,9 @@ import { Product, ProductTag, ExpenseItem, Transaction } from '../types';
 import { Plus, Trash2, Edit2, Save, X, Search, Image as ImageIcon, Tag as TagIcon, Upload, LineChart as ChartIcon, TrendingUp, TrendingDown, BarChart3, ArrowRight, ArrowLeft } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { InflationService, calculatePresentValue } from '../services/InflationService';
+import { AlertModal } from './AlertModal';
+import { ConfirmationModal } from './ConfirmationModal';
+
 
 interface ProductManagerProps {
   products: Product[];
@@ -12,7 +15,11 @@ interface ProductManagerProps {
   allExpenses: ExpenseItem[]; // To calculate history
 }
 
-const EMOJI_OPTIONS = ['🍎', '🥦', '🥩', '🍞', '🧹', '🥤', '🍺', '🧴', '💊', '🔋'];
+const EMOJI_OPTIONS = [
+  '🍎', '🥦', '🥩', '🐟', '🥖', '🧀', '🥫', '🍝', '🥣', '🧂',
+  '🥨', '🥛', '🥚', '🧊', '🥤', '💧', '☕', '🍷', '🧼', '🧴',
+  '👶', '🐾'
+];
 
 export const ProductManager: React.FC<ProductManagerProps> = ({ products, tags, onUpdateProducts, onUpdateTags, allExpenses }) => {
   // View State: 'manage' (default) or 'analysis' (the report)
@@ -37,6 +44,29 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, tags, 
   const [price, setPrice] = useState('');
   const [tagId, setTagId] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  // Modal States
+  const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string; type: 'info' | 'success' | 'error' | 'warning' }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
+
+  const [confirmState, setConfirmState] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { }
+  });
+
+  const showAlert = (title: string, message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') => {
+    setAlertState({ isOpen: true, title, message, type });
+  };
+
+  const showConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmState({ isOpen: true, title, message, onConfirm });
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -95,7 +125,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, tags, 
     if (isNaN(finalPrice)) return;
 
     if (tags.length === 0) {
-      alert("Espere a que se carguen las etiquetas antes de guardar.");
+      showAlert('Error', 'Espere a que se carguen las etiquetas antes de guardar.', 'warning');
       return;
     }
 
@@ -133,16 +163,37 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, tags, 
   };
 
   const handleDeleteProduct = (id: string) => {
-    if (window.confirm('¿Borrar este producto del catálogo?')) {
-      onUpdateProducts(products.filter(p => p.id !== id));
-    }
+    showConfirm(
+      'Eliminar Producto',
+      '¿Estás seguro de que deseas eliminar este producto del catálogo?',
+      () => {
+        onUpdateProducts(products.filter(p => p.id !== id));
+      }
+    );
   };
 
   const handleCreateTag = () => {
     if (!newTagName) return;
+
+    // Check for duplicates (Case Insensitive)
+    const normalizedName = newTagName.trim().toLowerCase();
+    const existingTag = tags.find(t => t.name.toLowerCase() === normalizedName);
+
+    if (existingTag) {
+      showAlert(
+        'Categoría Existente',
+        `Ya existe una categoría llamada "${existingTag.name}". Se ha seleccionado automáticamente.`,
+        'info'
+      );
+      setTagId(existingTag.id);
+      setNewTagName('');
+      setShowTagManager(false);
+      return;
+    }
+
     const newTag: ProductTag = {
       id: Date.now().toString(),
-      name: newTagName,
+      name: newTagName.trim(), // Trim whitespace
       emoji: newTagEmoji
     };
     const updatedTags = [...tags, newTag];
@@ -848,6 +899,24 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, tags, 
           </div>
         </div>
       )}
+
+      <AlertModal
+        isOpen={alertState.isOpen}
+        onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+      />
+
+      <ConfirmationModal
+        isOpen={confirmState.isOpen}
+        onClose={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmState.onConfirm}
+        title={confirmState.title}
+        message={confirmState.message}
+        isDestructive={true}
+        confirmLabel="Eliminar"
+      />
     </>
   );
 };

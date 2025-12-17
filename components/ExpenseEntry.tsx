@@ -3,6 +3,7 @@ import { ExpenseItem, MONTHS, Transaction, Product, STANDARD_CATEGORIES } from '
 import { Plus, Trash2, AlertTriangle, X, List, CheckCircle2, Loader2, Copy, GripVertical, Sparkles } from 'lucide-react';
 import { TransactionModal } from './TransactionModal';
 import { SmartImportModal } from './SmartImportModal';
+import { ConfirmationModal } from './ConfirmationModal';
 import { ParsedExpense } from '../services/geminiService';
 
 interface ExpenseEntryProps {
@@ -558,49 +559,16 @@ export const ExpenseEntry: React.FC<ExpenseEntryProps> = ({ data, previousYearDa
         </div>
       </div>
 
-      {/* Custom Delete Confirmation Modal */}
-      {itemToDelete && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-[fadeIn_0.2s_ease-out]">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-red-100 p-2 rounded-full text-red-600">
-                  <AlertTriangle size={24} />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900">Confirmar Eliminación</h3>
-              </div>
-              <button
-                onClick={() => setItemToDelete(null)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <p className="text-gray-600 mb-6 ml-11">
-              ¿Estás seguro que deseas eliminar <span className="font-bold text-gray-900">"{itemToDelete.name}"</span> del registro de <span className="font-semibold">{year}</span>?
-              <br /><br />
-              <span className="text-xs text-red-500 bg-red-50 px-2 py-1 rounded">Esta acción no se puede deshacer.</span>
-            </p>
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setItemToDelete(null)}
-                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium text-sm"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors font-medium flex items-center gap-2 text-sm"
-              >
-                <Trash2 size={16} />
-                Eliminar Gasto
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Standardized Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={!!itemToDelete}
+        onClose={() => setItemToDelete(null)}
+        onConfirm={confirmDelete}
+        title="Confirmar Eliminación"
+        message={`¿Estás seguro que deseas eliminar "${itemToDelete?.name}" del registro de ${year}? Esta acción no se puede deshacer.`}
+        isDestructive={true}
+        confirmLabel="Eliminar Gasto"
+      />
 
       {/* Transaction Breakdown Modal */}
       {editingTransactions && (
