@@ -36,6 +36,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, tags, 
 
   // Tag Management State
   const [showTagManager, setShowTagManager] = useState(false);
+  const [editingTagId, setEditingTagId] = useState<string | null>(null); // null = create mode, string = edit mode
   const [newTagName, setNewTagName] = useState('');
   const [newTagEmoji, setNewTagEmoji] = useState(EMOJI_OPTIONS[0]);
 
@@ -203,6 +204,51 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, tags, 
     setTagId(newTag.id);
 
     setNewTagName('');
+    setEditingTagId(null);
+    setShowTagManager(false);
+  };
+
+  // New: Edit an existing tag
+  const handleUpdateTag = () => {
+    if (!editingTagId || !newTagName.trim()) return;
+
+    const normalizedName = newTagName.trim().toLowerCase();
+    // Check for duplicates (but ignore self)
+    const existingTag = tags.find(t => t.id !== editingTagId && t.name.toLowerCase() === normalizedName);
+
+    if (existingTag) {
+      showAlert(
+        'Nombre Duplicado',
+        `Ya existe otra categoría llamada "${existingTag.name}".`,
+        'warning'
+      );
+      return;
+    }
+
+    const updatedTags = tags.map(t =>
+      t.id === editingTagId
+        ? { ...t, name: newTagName.trim(), emoji: newTagEmoji }
+        : t
+    );
+    onUpdateTags(updatedTags);
+
+    setNewTagName('');
+    setNewTagEmoji(EMOJI_OPTIONS[0]);
+    setEditingTagId(null);
+    setShowTagManager(false);
+  };
+
+  const startEditTag = (tag: ProductTag) => {
+    setEditingTagId(tag.id);
+    setNewTagName(tag.name);
+    setNewTagEmoji(tag.emoji);
+    setShowTagManager(true);
+  };
+
+  const resetTagForm = () => {
+    setNewTagName('');
+    setNewTagEmoji(EMOJI_OPTIONS[0]);
+    setEditingTagId(null);
     setShowTagManager(false);
   };
 
@@ -500,9 +546,18 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, tags, 
 
               return (
                 <div key={tag.id}>
-                  <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <span>{tag.emoji}</span> {tag.name}
-                  </h3>
+                  <div className="flex items-center gap-2 mb-3">
+                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                      <span>{tag.emoji}</span> {tag.name}
+                    </h3>
+                    <button
+                      onClick={() => startEditTag(tag)}
+                      className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                      title={`Editar categoría ${tag.name}`}
+                    >
+                      <Edit2 size={12} />
+                    </button>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {tagProducts.map(p => (
                       <div key={p.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:shadow-md transition-shadow group bg-white">
@@ -702,12 +757,14 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, tags, 
             </div>
           )}
 
-          {/* Inline Tag Manager */}
+          {/* Inline Tag Manager (Create or Edit Mode) */}
           {showTagManager && (
             <div className="mt-6 border-t pt-6 animate-fade-in">
               <div className="flex justify-between items-center mb-3">
-                <h4 className="font-bold text-gray-700 text-sm">Crear Nueva Etiqueta</h4>
-                <button onClick={() => setShowTagManager(false)} className="text-gray-400 hover:text-gray-600">
+                <h4 className="font-bold text-gray-700 text-sm">
+                  {editingTagId ? 'Editar Etiqueta' : 'Crear Nueva Etiqueta'}
+                </h4>
+                <button onClick={resetTagForm} className="text-gray-400 hover:text-gray-600">
                   <X size={16} />
                 </button>
               </div>
@@ -732,11 +789,11 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, tags, 
                     placeholder="Nombre (ej. Lácteos)"
                   />
                   <button
-                    onClick={handleCreateTag}
+                    onClick={editingTagId ? handleUpdateTag : handleCreateTag}
                     disabled={!newTagName}
                     className="bg-gray-800 text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-gray-900 disabled:opacity-50"
                   >
-                    CREAR
+                    {editingTagId ? 'GUARDAR' : 'CREAR'}
                   </button>
                 </div>
               </div>
