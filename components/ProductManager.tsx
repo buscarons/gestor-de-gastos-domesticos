@@ -18,7 +18,7 @@ interface ProductManagerProps {
 const EMOJI_OPTIONS = [
   '🍎', '🥦', '🥩', '🐟', '🥖', '🧀', '🥫', '🍝', '🥣', '🧂',
   '🥨', '🥛', '🥚', '🧊', '🥤', '💧', '☕', '🍷', '🧼', '🧴',
-  '👶', '🐾'
+  '👶', '🐾', '💊', '🩹'
 ];
 
 export const ProductManager: React.FC<ProductManagerProps> = ({ products, tags, onUpdateProducts, onUpdateTags, allExpenses }) => {
