@@ -95,9 +95,9 @@ export const ExpenseEntry: React.FC<ExpenseEntryProps> = ({ data, previousYearDa
 
   // Transaction Modal State
   const [editingTransactions, setEditingTransactions] = useState<{
-    itemIndex: number;
+    itemId: string; // Changed from itemIndex/item to itemId for stability
     monthIndex: number;
-    item: ExpenseItem;
+    itemName: string; // Keep name for display
   } | null>(null);
 
   // Smart Import Modal
@@ -158,26 +158,26 @@ export const ExpenseEntry: React.FC<ExpenseEntryProps> = ({ data, previousYearDa
 
   const handleTransactionsSave = (transactions: Transaction[]) => {
     if (!editingTransactions) return;
-    const { itemIndex, monthIndex } = editingTransactions;
+    const { itemId, monthIndex } = editingTransactions;
 
     const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
 
-    const updated = [...localData];
-    const item = { ...updated[itemIndex] };
+    const updated = localData.map(item => {
+      if (item.id === itemId) {
+        const newAmounts = [...item.amounts];
+        newAmounts[monthIndex] = totalAmount;
 
-    // Update amounts
-    const newAmounts = [...item.amounts];
-    newAmounts[monthIndex] = totalAmount;
-    item.amounts = newAmounts;
+        const newTransactionMap = item.transactions ? { ...item.transactions } : {};
+        newTransactionMap[monthIndex] = transactions;
 
-    // Update transactions map
-    const newTransactionMap = item.transactions ? { ...item.transactions } : {};
-    newTransactionMap[monthIndex] = transactions;
-    item.transactions = newTransactionMap;
+        return { ...item, amounts: newAmounts, transactions: newTransactionMap };
+      }
+      return item;
+    });
 
-    updated[itemIndex] = item;
     setLocalData(updated);
-    // Modal save is explicit, no debounce needed
+    // Modal save is explicit, no debounce needed (actually now it's auto-save, so we use debounce logic or direct onUpdate)
+    // We use onUpdate for immediate save to match expectation of "non-loss"
     onUpdate(updated);
   };
 
@@ -279,7 +279,7 @@ export const ExpenseEntry: React.FC<ExpenseEntryProps> = ({ data, previousYearDa
 
     // CHANGED: Allow breakdown for ALL items, not just specific categories.
     // This allows user to breakdown "Water", "UTE" (if paid twice?), or "Supermarket".
-    setEditingTransactions({ itemIndex: itemIdx, monthIndex: monthIdx, item });
+    setEditingTransactions({ itemId: item.id, monthIndex: monthIdx, itemName: item.name });
   };
 
   // Drag and Drop Handlers
@@ -570,15 +570,19 @@ export const ExpenseEntry: React.FC<ExpenseEntryProps> = ({ data, previousYearDa
         confirmLabel="Eliminar Gasto"
       />
 
-      {/* Transaction Breakdown Modal */}
+      {/* Transaction Breakdown Modal - Auto Saves on Change */}
       {editingTransactions && (
         <TransactionModal
           isOpen={!!editingTransactions}
           onClose={() => setEditingTransactions(null)}
-          itemName={editingTransactions.item.name}
+          itemName={editingTransactions.itemName}
           monthIndex={editingTransactions.monthIndex}
-          currentTransactions={editingTransactions.item.transactions?.[editingTransactions.monthIndex] || []}
-          onSave={handleTransactionsSave}
+          // Lookup current transactions from live localData
+          currentTransactions={
+            localData.find(i => i.id === editingTransactions.itemId)?.transactions?.[editingTransactions.monthIndex] || []
+          }
+          onTransactionChange={handleTransactionsSave} // Auto-save handler
+          onSave={() => setEditingTransactions(null)} // Close only
           products={products}
           onAddProduct={handleAddProductFromModal}
           onUpdateProduct={handleUpdateProductFromModal}
