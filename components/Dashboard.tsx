@@ -7,13 +7,18 @@ import { InflationService, getCumulativeInflation, calculateRealValue } from '..
 interface DashboardProps {
   data: ExpenseItem[];
   incomeData: IncomeItem[];
+  previousYearData?: ExpenseItem[];
+  previousYearIncome?: IncomeItem[];
   yearConfig: { startMonthIndex: number; year: number };
+  prevYearStartMonthIndex?: number;
   baseBalance: number;
 }
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1'];
 
-export const Dashboard: React.FC<DashboardProps> = ({ data, incomeData, yearConfig, baseBalance }) => {
+export const Dashboard: React.FC<DashboardProps> = ({
+  data, incomeData, previousYearData = [], previousYearIncome = [], yearConfig, prevYearStartMonthIndex = 0, baseBalance
+}) => {
 
   const currentMonthIndex = new Date().getMonth();
   const currentYear = new Date().getFullYear();
@@ -40,11 +45,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, incomeData, yearConf
     InflationService.getMonthlyInflation(year).then(setInflationRates);
   }, [year]);
 
-  useEffect(() => {
-    // Load inflation data on mount
-    InflationService.getMonthlyInflation(year).then(setInflationRates);
-  }, [year]);
-
   // --- LOGIC: DATA WINDOWS ---
   const RELIABLE_START_INDEX = startMonthIndex;
 
@@ -58,7 +58,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, incomeData, yearConf
   const isReliableForCharts = (idx: number) => idx >= RELIABLE_START_INDEX && idx <= MAX_MONTH_FOR_CHARTS;
   const isReliableForStats = (idx: number) => idx >= RELIABLE_START_INDEX && idx <= MAX_MONTH_FOR_STATS;
 
-  // --- 1. MONTHLY AGGREGATES ---
+  // --- 1. MONTHLY AGGREGATES (CURRENT YEAR) ---
   const monthlyData = useMemo(() => {
     return MONTHS.map((month, index) => {
       const totalExpense = data.reduce((acc, item) => acc + (item.amounts[index] || 0), 0);
@@ -76,29 +76,84 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, incomeData, yearConf
     });
   }, [data, incomeData]);
 
-  // --- 2. CALCULATE AVERAGES (Strictly on Completed Months) ---
-  const { avgExpense, avgIncome, avgSavings, validMonthsCount } = useMemo(() => {
-    let sumExpense = 0;
-    let sumIncome = 0;
-    let sumSavings = 0;
-    let count = 0;
-
-    for (let i = 0; i < 12; i++) {
-      if (isReliableForStats(i)) {
-        sumExpense += monthlyData[i].expense;
-        sumIncome += monthlyData[i].income;
-        sumSavings += monthlyData[i].netSavings;
-        count++;
+  // --- 2. ROLLING AVERAGE (LTM - Last Twelve Months) ---
+  // If current year has few months, we backfill with previous year's LAST months.
+  const { avgExpense, avgIncome, avgSavings, validMonthsCount, isUsingHistoricalData } = useMemo(() => {
+    // 1. Gather Current Year Closed Months
+    const currentYearMonths = [];
+    for (let i = 0; i <= MAX_MONTH_FOR_STATS; i++) {
+      // Must be after startMonthIndex to be valid in this system
+      if (i >= startMonthIndex) {
+        currentYearMonths.push({
+          expense: monthlyData[i].expense,
+          income: monthlyData[i].income,
+          savings: monthlyData[i].netSavings
+        });
       }
     }
 
+    // 2. Check if we need Historical Data (Backfill)
+    let historicalMonths: typeof currentYearMonths = [];
+    let usingHistorical = false;
+
+    // We aim for a window of 12 months for stability
+    const TARGET_WINDOW = 12;
+
+    // Only fetch backfill if:
+    // a) We are in the current year (active monitoring) - OR evaluating a past year that had few months?
+    //    Actually, for a past year (e.g. 2024 viewing in 2026), we usually just want that year's avg.
+    //    BUT the LTM logic is primarily for "Current Status".
+    //    Let's apply logic: If isCurrentYear, we desperately need backfill to avoid "January Zero Bias".
+    // b) We have fewer than TARGET_WINDOW months in current year.
+
+    if (isCurrentYear && currentYearMonths.length < TARGET_WINDOW) {
+      const needed = TARGET_WINDOW - currentYearMonths.length;
+
+      // Get previous year data IF available
+      if (previousYearData.length > 0 || previousYearIncome.length > 0) {
+        usingHistorical = true;
+        // Collect LAST 'needed' months from previous year (Indices: 11, 10, 9...)
+        // FIX: Ensure we don't pick months BEFORE the user started tracking (prevYearStartMonthIndex)
+        for (let i = 0; i < needed; i++) {
+          const monthIdx = 11 - i; // Dec, Nov, Oct...
+          if (monthIdx < 0) break;
+
+          // SKIP unrecorded months from previous year
+          if (monthIdx < prevYearStartMonthIndex) continue;
+
+          const totalExpense = previousYearData.reduce((acc, item) => acc + (item.amounts[monthIdx] || 0), 0);
+          const totalIncome = previousYearIncome.reduce((acc, item) => acc + (item.amounts[monthIdx] || 0), 0);
+          const netSavings = totalIncome - totalExpense;
+
+          historicalMonths.push({
+            expense: totalExpense,
+            income: totalIncome,
+            savings: netSavings
+          });
+        }
+      }
+    }
+
+    // 3. Combine pools
+    const allMonths = [...historicalMonths, ...currentYearMonths]; // Order doesn't matter for specific Avg, just Sum/Count
+
+    if (allMonths.length === 0) {
+      return { avgExpense: 0, avgIncome: 0, avgSavings: 0, validMonthsCount: 0, isUsingHistoricalData: false };
+    }
+
+    const sumExpense = allMonths.reduce((acc, m) => acc + m.expense, 0);
+    const sumIncome = allMonths.reduce((acc, m) => acc + m.income, 0);
+    const sumSavings = allMonths.reduce((acc, m) => acc + m.savings, 0);
+    const count = allMonths.length;
+
     return {
-      avgExpense: count > 0 ? sumExpense / count : 0,
-      avgIncome: count > 0 ? sumIncome / count : 0,
-      avgSavings: count > 0 ? sumSavings / count : 0,
-      validMonthsCount: count
+      avgExpense: sumExpense / count,
+      avgIncome: sumIncome / count,
+      avgSavings: sumSavings / count,
+      validMonthsCount: count,
+      isUsingHistoricalData: usingHistorical
     };
-  }, [monthlyData, isReliableForStats]);
+  }, [monthlyData, isReliableForStats, startMonthIndex, previousYearData, previousYearIncome, isCurrentYear, MAX_MONTH_FOR_STATS]);
 
   // --- 3. PROJECTION LOGIC (With Inflation) ---
   const projectionData = useMemo(() => {
@@ -435,7 +490,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, incomeData, yearConf
             </div>
             <p className="text-2xl font-bold text-gray-900">${Math.round(avgExpense).toLocaleString('es-UY')}</p>
             <p className="text-[10px] text-gray-400 mt-1">
-              {validMonthsCount > 0 ? `Basado en ${validMonthsCount} meses cerrados` : 'Datos insuficientes'}
+              {isUsingHistoricalData
+                ? `Promedio móvil (últ. ${validMonthsCount} meses)`
+                : (validMonthsCount > 0 ? `Basado en ${validMonthsCount} meses cerrados` : 'Datos insuficientes')}
             </p>
           </div>
         )}
@@ -449,7 +506,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, incomeData, yearConf
           <p className={`text-2xl font-bold ${avgSavings >= 0 ? 'text-indigo-600' : 'text-red-500'}`}>
             ${Math.round(avgSavings).toLocaleString('es-UY')}
           </p>
-          <p className="text-[10px] text-gray-400 mt-1">Promedio mensual real</p>
+          <p className="text-[10px] text-gray-400 mt-1">
+            {isUsingHistoricalData ? 'Promedio mensual real (LTM)' : 'Promedio mensual real'}
+          </p>
         </div>
 
         {/* CARD 6: Total Gastado */}

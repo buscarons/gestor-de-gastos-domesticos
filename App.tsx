@@ -130,7 +130,13 @@ const App: React.FC = () => {
     return yearConfigs.find(c => c.year === selectedYear) || { year: selectedYear, startMonthIndex: 0 };
   }, [yearConfigs, selectedYear]);
 
-  // CALCULATE NET SAVINGS FROM PREVIOUS YEARS
+  const previousYearConfig = useMemo(() => {
+    return yearConfigs.find(c => c.year === selectedYear - 1) || { year: selectedYear - 1, startMonthIndex: 0 };
+  }, [yearConfigs, selectedYear]);
+
+  // ... (existing code)
+
+
   const previousYearsAccumulated = useMemo(() => {
     let accumulated = 0;
     const allYears = new Set([...data.map(i => i.year), ...incomeData.map(i => i.year)]);
@@ -428,10 +434,13 @@ const App: React.FC = () => {
           <Dashboard
             data={currentYearData}
             incomeData={currentYearIncome}
+            previousYearData={previousYearData}
+            previousYearIncome={previousYearIncome}
             yearConfig={{
               year: selectedYear,
               startMonthIndex: currentYearConfig.startMonthIndex
             }}
+            prevYearStartMonthIndex={previousYearConfig.startMonthIndex}
             baseBalance={openingBalanceForSelectedYear}
           />
         )}
