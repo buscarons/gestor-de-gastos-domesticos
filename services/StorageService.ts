@@ -1,7 +1,7 @@
 import { supabase } from './supabaseClient';
 import { ExpenseItem, IncomeItem, Product, ProductTag, YearConfig } from '../types';
 
-// Default Data for fallbacks
+// Default Tags for fallback
 const DEFAULT_TAGS: ProductTag[] = [
   { id: '1', name: 'Comestibles', emoji: '🍞' },
   { id: '2', name: 'Limpieza', emoji: '🧹' },
@@ -10,41 +10,24 @@ const DEFAULT_TAGS: ProductTag[] = [
 ];
 
 /**
- * StorageService (Supabase Edition)
- * 
- * Ahora todas las operaciones son ASÍNCRONAS.
- * Se conecta a las tablas definidas en supabase_schema.sql.
+ * StorageService (Hybrid: Supabase + LocalStorage for Guest)
  */
 export const StorageService = {
 
   // --- AUTH / USER CHECK ---
-  // Helper to get current user. If no user, we might need to sign in anonymously or require auth.
-  // For this app, we assume an authenticated context or we force a sign-in if needed.
-  // For now, we'll assume the user is signed in or we use a public/anon strategy if RLS allows it.
-  // BUT: The SQL script had 'auth.uid() = user_id', so we NEED a user.
-  // We'll expose a method to check/ensure session.
-
   getCurrentUser: async () => {
     const { data } = await supabase.auth.getSession();
     return data.session?.user || null;
   },
 
-  ensureAuth: async (): Promise<string> => {
+  /**
+   * Checks if valid session exists.
+   * NO LONGER forces anonymous sign-in.
+   * Returns user ID or null if guest.
+   */
+  ensureAuth: async (): Promise<string | null> => {
     const user = await StorageService.getCurrentUser();
-    if (user) return user.id;
-
-    // Try anonymous sign in
-    const { data, error } = await supabase.auth.signInAnonymously();
-    if (error) {
-      console.error("Error signing in anonymously:", error);
-      throw new Error(`Error de Autenticación: ${error.message}. Verifica que 'Enable Anonymous Sign-ins' esté activado en Supabase.`);
-    }
-
-    if (!data.user) {
-      throw new Error("No se pudo obtener el usuario anónimo.");
-    }
-
-    return data.user.id;
+    return user ? user.id : null;
   },
 
   signInWithEmail: async (email: string, password: string) => {
@@ -59,6 +42,10 @@ export const StorageService = {
   signOut: async () => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
+    // Clear guest data on logout to reset demo state? 
+    // Or keep it? User might want to toggle.
+    // Ideally, logout goes to "Guest Mode" which might have data.
+    // Let's reload page on logout usually.
   },
 
   getSessionUser: async () => {
@@ -69,7 +56,10 @@ export const StorageService = {
   // --- SETUP ---
   getSetupStatus: async (): Promise<boolean> => {
     const user = await StorageService.getCurrentUser();
-    if (!user) return false;
+    if (!user) {
+      // Guest Mode
+      return localStorage.getItem('guest_setup_completed') === 'true';
+    }
 
     const { data, error } = await supabase
       .from('app_settings')
@@ -83,7 +73,10 @@ export const StorageService = {
 
   completeSetup: async (): Promise<void> => {
     const user = await StorageService.getCurrentUser();
-    if (!user) return;
+    if (!user) {
+      localStorage.setItem('guest_setup_completed', 'true');
+      return;
+    }
 
     const { error } = await supabase
       .from('app_settings')
@@ -94,6 +87,12 @@ export const StorageService = {
 
   // --- EXPENSES ---
   getExpenses: async (): Promise<ExpenseItem[]> => {
+    const user = await StorageService.getCurrentUser();
+    if (!user) {
+      const stored = localStorage.getItem('guest_expenses');
+      return stored ? JSON.parse(stored) : [];
+    }
+
     const { data, error } = await supabase
       .from('expenses')
       .select('*');
@@ -103,9 +102,6 @@ export const StorageService = {
       return [];
     }
 
-    // Map DB snake_case to App camelCase (if needed) or cast types
-    // Our SQL defines amounts as jsonb, so it should come back as number[] automatically if using JS client
-    // transactions also jsonb
     return data.map((row: any) => ({
       id: row.id,
       year: row.year,
@@ -116,38 +112,24 @@ export const StorageService = {
     }));
   },
 
-  // Upsert (Insert or Update)
-  // We generally save the WHOLE array in the old version.
-  // In SQL, we should upset INDIVIDUAL items.
-  // IMPORTANT: The App.tsx currently passes the FULL array for 'saveExpenses'.
-  // OPTIMIZATION: We should only save what changed, but for migration compatibility 
-  // we will accept the full array and iterate upserts (or delete+insert, but upsert is better).
-  // FOR EFFICIENCY in this simple app: We can just upsert all modifications.
-  // But wait, if we delete something in UI, we need to delete in DB. 
-  // Sending the full array to "Sync" is complex with SQL. 
-  // BETTER APPROACH for "Phase 1": 
-  // Logic: 
-  // 1. Get all DB IDs.
-  // 2. Identify deletions (In DB but not in new List).
-  // 3. Upsert content.
   saveExpenses: async (data: ExpenseItem[]): Promise<void> => {
     const user = await StorageService.getCurrentUser();
-    if (!user) return;
+    if (!user) {
+      localStorage.setItem('guest_expenses', JSON.stringify(data));
+      return;
+    }
 
-    // 1. Fetch existing IDs to find deletions
+    // Supabase Sync Logic
     const { data: existing } = await supabase.from('expenses').select('id');
     const existingIds = existing ? existing.map(x => x.id) : [];
     const newIds = new Set(data.map(d => d.id));
 
     const toDelete = existingIds.filter(id => !newIds.has(id));
 
-    // 2. Delete
     if (toDelete.length > 0) {
       await supabase.from('expenses').delete().in('id', toDelete);
     }
 
-    // 3. Upsert
-    // Map to DB structure
     const toUpsert = data.map(item => ({
       id: item.id,
       user_id: user.id,
@@ -164,6 +146,12 @@ export const StorageService = {
 
   // --- INCOME ---
   getIncome: async (): Promise<IncomeItem[]> => {
+    const user = await StorageService.getCurrentUser();
+    if (!user) {
+      const stored = localStorage.getItem('guest_income');
+      return stored ? JSON.parse(stored) : [];
+    }
+
     const { data, error } = await supabase.from('income').select('*');
     if (error) {
       console.error("Error fetching income", error);
@@ -180,7 +168,10 @@ export const StorageService = {
 
   saveIncome: async (data: IncomeItem[]): Promise<void> => {
     const user = await StorageService.getCurrentUser();
-    if (!user) return;
+    if (!user) {
+      localStorage.setItem('guest_income', JSON.stringify(data));
+      return;
+    }
 
     const { data: existing } = await supabase.from('income').select('id');
     const existingIds = existing ? existing.map(x => x.id) : [];
@@ -204,10 +195,12 @@ export const StorageService = {
     if (error) console.error("Error saving income", error);
   },
 
-  // --- GLOBAL SETTINGS (Savings) ---
+  // --- BASE BALANCE ---
   getBaseBalance: async (): Promise<number> => {
     const user = await StorageService.getCurrentUser();
-    if (!user) return 0;
+    if (!user) {
+      return Number(localStorage.getItem('guest_base_balance') || 0);
+    }
 
     const { data, error } = await supabase
       .from('savings_settings')
@@ -221,9 +214,11 @@ export const StorageService = {
 
   saveBaseBalance: async (amount: number): Promise<void> => {
     const user = await StorageService.getCurrentUser();
-    if (!user) return;
+    if (!user) {
+      localStorage.setItem('guest_base_balance', amount.toString());
+      return;
+    }
 
-    // Check if row exists to know if we insert or update, but upsert with user_id unique works
     const { error } = await supabase
       .from('savings_settings')
       .upsert({ user_id: user.id, base_balance: amount }, { onConflict: 'user_id' });
@@ -233,6 +228,12 @@ export const StorageService = {
 
   // --- YEAR CONFIG ---
   getYearConfigs: async (): Promise<YearConfig[]> => {
+    const user = await StorageService.getCurrentUser();
+    if (!user) {
+      const stored = localStorage.getItem('guest_year_configs');
+      return stored ? JSON.parse(stored) : [{ year: new Date().getFullYear(), startMonthIndex: 0 }];
+    }
+
     const { data, error } = await supabase.from('year_configs').select('*');
     if (error) return [{ year: 2025, startMonthIndex: 6 }];
 
@@ -246,7 +247,10 @@ export const StorageService = {
 
   saveYearConfigs: async (configs: YearConfig[]): Promise<void> => {
     const user = await StorageService.getCurrentUser();
-    if (!user) return;
+    if (!user) {
+      localStorage.setItem('guest_year_configs', JSON.stringify(configs));
+      return;
+    }
 
     const toUpsert = configs.map(c => ({
       user_id: user.id,
@@ -263,6 +267,12 @@ export const StorageService = {
 
   // --- PRODUCTS ---
   getProducts: async (): Promise<Product[]> => {
+    const user = await StorageService.getCurrentUser();
+    if (!user) {
+      const stored = localStorage.getItem('guest_products');
+      return stored ? JSON.parse(stored) : [];
+    }
+
     const { data, error } = await supabase.from('products').select('*');
     if (error) return [];
 
@@ -277,9 +287,11 @@ export const StorageService = {
 
   saveProducts: async (products: Product[]): Promise<void> => {
     const user = await StorageService.getCurrentUser();
-    if (!user) return;
+    if (!user) {
+      localStorage.setItem('guest_products', JSON.stringify(products));
+      return;
+    }
 
-    // Similar sync logic: delete missing, upsert current
     const { data: existing } = await supabase.from('products').select('id');
     const existingIds = existing ? existing.map(x => x.id) : [];
     const newIds = new Set(products.map(d => d.id));
@@ -298,65 +310,47 @@ export const StorageService = {
       tag_id: p.tagId
     }));
 
-    // DEBUG: Validate Foreign Keys
-    if (toUpsert.length > 0) {
-      console.log("StorageService: Saving Products...", toUpsert);
-      const sampleTagId = toUpsert[0].tag_id;
-      if (sampleTagId) {
-        const { data: tagCheck } = await supabase.from('product_tags').select('id').eq('id', sampleTagId);
-        console.log(`StorageService: Checking tag ${sampleTagId} existence:`, tagCheck);
-        if (!tagCheck || tagCheck.length === 0) {
-          console.error(`StorageService: CRITICAL - Tag ${sampleTagId} NOT FOUND in DB for user ${user.id}. Aborting save to prevent FK error.`);
-          // alert("Error de consistencia: La etiqueta seleccionada no existe en la base de datos. Recarga la página.");
-          // return; // Optional: Stop to prevent the error, or let it fail to see the real DB error.
-        }
-      }
-    }
-
     const { error } = await supabase.from('products').upsert(toUpsert);
     if (error) console.error("Error saving products", error);
   },
 
   // --- TAGS ---
   getTags: async (): Promise<ProductTag[]> => {
+    const user = await StorageService.getCurrentUser();
+
+    // GUEST MODE
+    if (!user) {
+      const stored = localStorage.getItem('guest_tags');
+      // If no stored tags, return defaults (or empty depending on demo init strategy)
+      // Usually DemoDataService initializes this.
+      return stored ? JSON.parse(stored) : DEFAULT_TAGS;
+    }
+
+    // CLOUD MODE
     const { data, error } = await supabase.from('product_tags').select('*');
 
     // If DB is empty, seed defaults
     if (!error && (!data || data.length === 0)) {
       try {
-        const user = await StorageService.getCurrentUser();
-        if (user) {
-          console.log("StorageService: Seeding Default Tags for user", user.id);
-          // Prepare defaults without IDs (let DB generate UUIDs)
-          const toInsert = DEFAULT_TAGS.map(t => ({
-            user_id: user.id,
-            name: t.name,
-            emoji: t.emoji
+        console.log("StorageService: Seeding Default Tags for user", user.id);
+        const toInsert = DEFAULT_TAGS.map(t => ({
+          user_id: user.id,
+          name: t.name,
+          emoji: t.emoji
+        }));
+        await supabase.from('product_tags').insert(toInsert);
+
+        // Re-fetch
+        const { data: seeded } = await supabase.from('product_tags').select('*');
+        if (seeded && seeded.length > 0) {
+          return seeded.map((row: any) => ({
+            id: row.id,
+            name: row.name,
+            emoji: row.emoji
           }));
-
-          const { error: insertError } = await supabase.from('product_tags').insert(toInsert);
-          if (insertError) {
-            console.error("StorageService: Error inserting default tags:", insertError);
-            throw insertError;
-          }
-
-          // Re-fetch to get the real UUIDs
-          const { data: seeded, error: fetchError } = await supabase.from('product_tags').select('*');
-
-          if (fetchError) console.error("StorageService: Error fetching valid tags after seed:", fetchError);
-
-          if (seeded && seeded.length > 0) {
-            return seeded.map((row: any) => ({
-              id: row.id,
-              name: row.name,
-              emoji: row.emoji
-            }));
-          }
-        } else {
-          console.warn("StorageService: Cannot seed tags, no user found.");
         }
       } catch (e) {
-        console.error("StorageService: Unexpected error during tag seeding:", e);
+        console.error("Error seeding tags", e);
       }
     }
 
@@ -371,7 +365,10 @@ export const StorageService = {
 
   saveTags: async (tags: ProductTag[]): Promise<void> => {
     const user = await StorageService.getCurrentUser();
-    if (!user) return;
+    if (!user) {
+      localStorage.setItem('guest_tags', JSON.stringify(tags));
+      return;
+    }
 
     const toUpsert = tags.map(t => ({
       id: t.id,

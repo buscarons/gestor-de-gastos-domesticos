@@ -11,6 +11,7 @@ import { ProductManager } from './components/ProductManager';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { YearSettingsModal } from './components/YearSettingsModal';
 import { StorageService } from './services/StorageService';
+import { DemoDataService } from './services/DemoDataService'; // Import Demo Service
 import { LoginModal } from './components/LoginModal';
 import { ConfirmationModal } from './components/ConfirmationModal';
 import { User, LogIn, LogOut } from 'lucide-react';
@@ -53,7 +54,14 @@ const App: React.FC = () => {
       await StorageService.ensureAuth();
 
       const user = await StorageService.getSessionUser();
-      setCurrentUserEmail(user?.email || null); // If email is null, it's anonymous usually
+      setCurrentUserEmail(user?.email || null); // If email is null, it's Guest Mode
+
+      // GUEST MODE: Initialize Demo Data if needed
+      if (!user) {
+        if (!DemoDataService.checkIfGuestDataExists()) {
+          DemoDataService.initializeDemoData(selectedYear);
+        }
+      }
 
       const [
         setupStatus,

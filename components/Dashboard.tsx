@@ -78,7 +78,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   // --- 2. ROLLING AVERAGE (LTM - Last Twelve Months) ---
   // If current year has few months, we backfill with previous year's LAST months.
-  const { avgExpense, avgIncome, avgSavings, validMonthsCount, isUsingHistoricalData } = useMemo(() => {
+  const { avgExpense, avgIncome, avgSavings, validMonthsCount, isUsingHistoricalData, stdDev } = useMemo(() => {
     // 1. Gather Current Year Closed Months
     const currentYearMonths = [];
     for (let i = 0; i <= MAX_MONTH_FOR_STATS; i++) {
@@ -146,12 +146,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const sumSavings = allMonths.reduce((acc, m) => acc + m.savings, 0);
     const count = allMonths.length;
 
+    const avgSavings = sumSavings / count;
+
+    // Calculate Variance/StdDev based on the SAME pool used for Average (LTM)
+    // This ensures we have a valid deviation even if current year is empty
+    const variance = allMonths.reduce((acc, m) => acc + Math.pow(m.savings - avgSavings, 2), 0) / count;
+    const stdDev = Math.sqrt(variance);
+
     return {
       avgExpense: sumExpense / count,
       avgIncome: sumIncome / count,
-      avgSavings: sumSavings / count,
+      avgSavings,
       validMonthsCount: count,
-      isUsingHistoricalData: usingHistorical
+      isUsingHistoricalData: usingHistorical,
+      stdDev
     };
   }, [monthlyData, isReliableForStats, startMonthIndex, previousYearData, previousYearIncome, isCurrentYear, MAX_MONTH_FOR_STATS]);
 
@@ -160,16 +168,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     // We maintain two separate accumulators to allow "forking" at the current month
     let runningActual = baseBalance; // initialSavings -> baseBalance (Prop name is baseBalance)
     let runningProjected = baseBalance;
-
-    // Calculate Standard Deviation for Error Margin based only on COMPLETED months
-    const reliableSavingsValues = monthlyData
-      .filter(m => isReliableForStats(m.index))
-      .map(m => m.netSavings);
-
-    const variance = reliableSavingsValues.length > 0
-      ? reliableSavingsValues.reduce((acc, val) => acc + Math.pow(val - avgSavings, 2), 0) / reliableSavingsValues.length
-      : 0;
-    const stdDev = Math.sqrt(variance);
 
     // Build the chart data
     const result = [];
@@ -616,7 +614,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `$${value / 1000}k`} tick={{ fill: '#9ca3af', fontSize: 12 }} />
               <RechartsTooltip
                 formatter={(value: any, name: string) => {
-                  if (name === 'range') return [null, null];
+                  if (name === 'Margen de Error' || name === 'range') return [null, null];
                   // Translation map
                   const labels: Record<string, string> = {
                     'actual': 'Ahorro Nominal',
