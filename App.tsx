@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { LayoutDashboard, Table2, Wallet, BookOpen, ChevronLeft, ChevronRight, Plus, ShoppingBag, Settings } from 'lucide-react';
+import { LayoutDashboard, Table2, Wallet, BookOpen, ChevronLeft, ChevronRight, Plus, ShoppingBag, Settings, Sparkles, Database, Trash2 } from 'lucide-react';
 import { ExpenseItem, IncomeItem, ViewState, Product, ProductTag, YearConfig, MONTHS } from './types';
 import { Dashboard } from './components/Dashboard';
 import { ExpenseEntry } from './components/ExpenseEntry';
@@ -41,6 +41,7 @@ const App: React.FC = () => {
   const [showLogin, setShowLogin] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const [demoModalOpen, setDemoModalOpen] = useState(false);
 
   // Year state
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
@@ -99,6 +100,16 @@ const App: React.FC = () => {
   useEffect(() => {
     loadAllData();
   }, []);
+
+  // Check for Demo Welcome
+  useEffect(() => {
+    if (!loading && !currentUserEmail) {
+      const shown = localStorage.getItem('demo_welcome_shown');
+      if (!shown) {
+        setDemoModalOpen(true);
+      }
+    }
+  }, [loading, currentUserEmail]);
 
   const handleLogout = () => {
     setShowLogoutConfirm(true);
@@ -538,7 +549,7 @@ const App: React.FC = () => {
       {currentYearData.length > 0 && view !== 'products' && (
         <button
           onClick={() => setShowQuickAdd(true)}
-          className="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 z-40 group"
+          className="fixed bottom-20 right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 z-40 group"
           title="Registro Rápido de Gastos"
         >
           <Plus size={28} />
@@ -547,8 +558,95 @@ const App: React.FC = () => {
           </span>
         </button>
       )}
+
+      {/* DEMO MODE BANNER */}
+      {!currentUserEmail && !loading && (
+        <div className="fixed bottom-0 left-0 right-0 bg-amber-400 text-amber-950 px-4 py-2 z-50 flex items-center justify-center shadow-lg border-t border-amber-500">
+          <div className="flex items-center gap-2 max-w-4xl w-full justify-between">
+            <div className="flex items-center gap-2">
+              <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded border border-amber-200">MODO DEMO</span>
+              <p className="text-xs font-medium hidden sm:block">Datos de ejemplo generados automáticamente. Tus cambios se perderán al borrar caché.</p>
+              <p className="text-xs font-medium sm:hidden">Datos de ejemplo no persistentes.</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  StorageService.signOut().then(() => {
+                    localStorage.removeItem('guest_setup_completed');
+                    window.location.reload();
+                  });
+                }}
+                className="text-xs underline hover:text-black font-medium"
+              >
+                Reiniciar Demo
+              </button>
+              <span className="text-amber-700/40">|</span>
+              <button onClick={() => setShowLogin(true)} className="text-xs font-bold hover:underline flex items-center gap-1">
+                <LogIn size={12} />
+                Acceder
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DEMO WELCOME MODAL */}
+      {demoModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-gray-100 transform transition-all scale-100">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white text-center">
+              <div className="mx-auto bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mb-4 backdrop-blur-md border border-white/30">
+                <Sparkles size={32} />
+              </div>
+              <h2 className="text-2xl font-bold mb-1">Modo Demo Activado</h2>
+              <p className="text-blue-100 text-sm">Explora la app con datos de prueba</p>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              <div className="flex gap-3 items-start bg-blue-50 p-3 rounded-lg border border-blue-100">
+                <div className="mt-0.5 text-blue-600"><Database size={18} /></div>
+                <div>
+                  <h4 className="font-bold text-gray-800 text-sm">Datos Locales</h4>
+                  <p className="text-xs text-gray-600 mt-0.5">Todo lo que ves vive en tu navegador. Nada se guarda en la nube ni es visible para otros.</p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 items-start bg-amber-50 p-3 rounded-lg border border-amber-100">
+                <div className="mt-0.5 text-amber-600"><Trash2 size={18} /></div>
+                <div>
+                  <h4 className="font-bold text-gray-800 text-sm">Volátil</h4>
+                  <p className="text-xs text-gray-600 mt-0.5">Si borras el historial o entras desde otro dispositivo, comenzarás de cero (o verás una nueva demo).</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-center text-gray-400 mt-4">
+                ¿Listo para tomar el control de tus finanzas? create una cuenta para guardar tus datos reales.
+              </p>
+
+              <button
+                onClick={() => {
+                  localStorage.setItem('demo_welcome_shown', 'true');
+                  // Force re-render just to hide modal? Or generic state?
+                  // Quick hack: just remove modal from DOM by simpler logic or state?
+                  // We need state for this modal visibility to close it smoothly.
+                  // Let's rely on React state update instead of direct variable.
+                  window.dispatchEvent(new Event('storage')); // trigger update? No.
+                  // Better: Set a state.
+                  setDemoModalOpen(false);
+                }}
+                className="w-full bg-gray-900 hover:bg-black text-white font-bold py-3 rounded-xl transition-all transform active:scale-95 shadow-lg"
+              >
+                ¡Entendido, vamos!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
 
 export default App;
