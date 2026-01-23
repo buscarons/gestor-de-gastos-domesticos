@@ -1,47 +1,49 @@
 <!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Gestor de Gastos 2025</title>
-    
-    <!-- PWA Configuration -->
-    <link rel="manifest" href="/manifest.json" />
-    
-    <!-- Open Graph / Social Media Meta Tags -->
-    <meta property="og:title" content="Gestor de Finanzas Personales (Uruguay)" />
-    <meta property="og:description" content="App de control de gastos con IA y ajuste por inflación." />
-    <meta property="og:image" content="https://gestor-de-gastos-domesticos-4hog8xs3z.vercel.app/og-image.png" />
-    <meta property="og:url" content="https://gestor-de-gastos-domesticos-4hog8xs3z.vercel.app/" />
-    <meta property="og:type" content="website" />
 
-    <meta name="theme-color" content="#2563eb" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2344/2344132.png" />
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-      body {
-        font-family: 'Inter', sans-serif;
-        background-color: #f3f4f6;
-        /* Prevent pull-to-refresh on mobile ensuring app-like feel */
-        overscroll-behavior-y: none;
-      }
-      
-      /* Hide spin buttons for Chrome, Safari, Edge, Opera */
-      input::-webkit-outer-spin-button,
-      input::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Gestor de Gastos 2025</title>
 
-      /* Hide spin buttons for Firefox */
-      input[type=number] {
-        -moz-appearance: textfield;
-      }
-    </style>
+  <!-- PWA Configuration -->
+  <link rel="manifest" href="/manifest.json" />
+
+  <!-- Open Graph / Social Media Meta Tags -->
+  <meta property="og:title" content="Gestor de Finanzas Personales (Uruguay)" />
+  <meta property="og:description"
+    content="Domina tus finanzas personales con esta App inteligente. Registra gastos, visualiza proyecciones de ahorro ajustadas por inflación y simula tu futuro financiero con herramientas avanzadas de análisis." />
+  <meta property="og:image" content="https://gestor-de-gastos-domesticos.vercel.app/og-image.png" />
+  <meta property="og:url" content="https://gestor-de-gastos-domesticos.vercel.app/" />
+  <meta property="og:type" content="website" />
+
+  <meta name="theme-color" content="#2563eb" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2344/2344132.png" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f3f4f6;
+      /* Prevent pull-to-refresh on mobile ensuring app-like feel */
+      overscroll-behavior-y: none;
+    }
+
+    /* Hide spin buttons for Chrome, Safari, Edge, Opera */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    /* Hide spin buttons for Firefox */
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+  </style>
   <script type="importmap">
 {
   "imports": {
@@ -56,19 +58,21 @@
 }
 </script>
 </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-    
-    <!-- Register Service Worker -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then((reg) => console.log('Service Worker registrado', reg))
-            .catch((err) => console.log('Error al registrar SW', err));
-        });
-      }
-    </script>
-  </body>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+
+  <!-- Register Service Worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((reg) => console.log('Service Worker registrado', reg))
+          .catch((err) => console.log('Error al registrar SW', err));
+      });
+    }
+  </script>
+</body>
+
 </html>
