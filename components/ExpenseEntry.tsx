@@ -15,6 +15,7 @@ interface ExpenseEntryProps {
   products: Product[];
   onUpdateProducts: (products: Product[]) => void;
   startMonthIndex: number;
+  isGuest?: boolean;
 }
 
 // Color Palette Definition
@@ -67,7 +68,7 @@ const formatMoney = (amount: number) => {
   return amount.toLocaleString('es-UY', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 };
 
-export const ExpenseEntry: React.FC<ExpenseEntryProps> = ({ data, previousYearData, onUpdate, year, products, onUpdateProducts, startMonthIndex }) => {
+export const ExpenseEntry: React.FC<ExpenseEntryProps> = ({ data, previousYearData, onUpdate, year, products, onUpdateProducts, startMonthIndex, isGuest }) => {
   const [localData, setLocalData] = useState<ExpenseItem[]>(data);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'idle'>('saved');
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -381,10 +382,17 @@ export const ExpenseEntry: React.FC<ExpenseEntryProps> = ({ data, previousYearDa
           <div className="h-[38px] w-px bg-gray-300 mx-2"></div>
           <button
             onClick={() => setShowSmartImport(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:shadow-lg hover:opacity-90 transition-all text-sm h-[38px]"
-            title="Pegar texto y detectar gastos con IA"
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-sm h-[38px] ${isGuest
+                ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-pointer hover:bg-gray-200'
+                : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:shadow-lg hover:opacity-90'
+              }`}
+            title={isGuest ? "IA no disponible en modo invitado" : "Pegar texto y detectar gastos con IA"}
           >
-            <Sparkles size={16} className="text-yellow-200" />
+            {isGuest ? (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+            ) : (
+              <Sparkles size={16} className="text-yellow-200" />
+            )}
             <span>Importar con IA</span>
           </button>
         </div>
@@ -596,6 +604,7 @@ export const ExpenseEntry: React.FC<ExpenseEntryProps> = ({ data, previousYearDa
         year={year}
         startMonthIndex={startMonthIndex}
         onImport={handleSmartImport}
+        isGuest={isGuest}
       />
     </>
   );

@@ -9,9 +9,10 @@ interface SmartImportModalProps {
   year: number;
   startMonthIndex: number;
   onImport: (items: ParsedExpense[]) => void;
+  isGuest?: boolean;
 }
 
-export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onClose, year, startMonthIndex, onImport }) => {
+export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onClose, year, startMonthIndex, onImport, isGuest }) => {
   const [step, setStep] = useState<'input' | 'preview'>('input');
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -23,7 +24,7 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
   if (!isOpen) return null;
 
   const handleAnalyze = async () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || isGuest) return;
     setIsLoading(true);
     setError(null);
     setRemovedCount(0);
@@ -100,7 +101,22 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
         </div>
 
         <div className="p-6 flex-1 overflow-y-auto">
-          {step === 'input' ? (
+          {isGuest ? (
+            <div className="h-full flex flex-col items-center justify-center text-center space-y-4 py-8 animate-fade-in">
+              <div className="bg-amber-50 p-6 rounded-full text-amber-500">
+                <AlertCircle size={48} />
+              </div>
+              <div className="max-w-md">
+                <h3 className="text-lg font-bold text-gray-800">IA no disponible en Modo Invitado</h3>
+                <p className="text-sm text-gray-500 mt-2">
+                  La funcionalidad de inteligencia artificial requiere una conexión segura con la API de Google Gemini, la cual solo está disponible para usuarios autenticados.
+                </p>
+                <p className="text-xs text-indigo-600 font-medium mt-4 bg-indigo-50 px-4 py-2 rounded-lg border border-indigo-100">
+                  ¡Inicia sesión o regístrate para usar el asistente inteligente!
+                </p>
+              </div>
+            </div>
+          ) : step === 'input' ? (
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -126,10 +142,10 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
                       onClick={() => idx >= startMonthIndex && setDefaultMonth(idx)}
                       disabled={idx < startMonthIndex}
                       className={`text-xs py-2 rounded-md border transition-all ${defaultMonth === idx
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                          : idx < startMonthIndex
-                            ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
-                            : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                        : idx < startMonthIndex
+                          ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
                         }`}
                     >
                       {m.substring(0, 3)}

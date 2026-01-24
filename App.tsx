@@ -516,6 +516,7 @@ const App: React.FC = () => {
                 products={products}
                 onUpdateProducts={handleUpdateProducts}
                 startMonthIndex={currentYearConfig.startMonthIndex}
+                isGuest={!currentUserEmail}
               />
             ) : (
               <IncomeEntry
