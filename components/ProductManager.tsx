@@ -26,6 +26,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, tags, 
   const [viewMode, setViewMode] = useState<'manage' | 'analysis'>('manage');
 
   const [isAdding, setIsAdding] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
@@ -119,8 +120,11 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, tags, 
     };
   };
 
-  const handleSaveProduct = () => {
-    if (!name || !price) return;
+  const handleSaveProduct = async () => {
+    if (!name || !price || isSaving) return;
+
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
 
     const finalPrice = parseFloat(price);
     if (isNaN(finalPrice)) return;
@@ -130,28 +134,46 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, tags, 
       return;
     }
 
-    const finalTagId = tagId || tags[0].id;
+    // Check for duplicates (Case Insensitive)
+    const normalizedName = trimmedName.toLowerCase();
+    const isDuplicate = products.some(p =>
+      p.id !== editingId && p.name.trim().toLowerCase() === normalizedName
+    );
 
-    if (editingId) {
-      // Edit
-      const updated = products.map(p =>
-        p.id === editingId
-          ? { ...p, name, defaultPrice: finalPrice, tagId: finalTagId, image: imagePreview || undefined }
-          : p
-      );
-      onUpdateProducts(updated);
-    } else {
-      // Add
-      const newProduct: Product = {
-        id: Date.now().toString(),
-        name,
-        defaultPrice: finalPrice,
-        tagId: finalTagId,
-        image: imagePreview || undefined
-      };
-      onUpdateProducts([...products, newProduct]);
+    if (isDuplicate) {
+      showAlert('Producto Duplicado', `Ya existe un producto llamado "${trimmedName}" en el catálogo.`, 'warning');
+      return;
     }
-    resetForm();
+
+    const finalTagId = tagId || tags[0].id;
+    setIsSaving(true);
+
+    try {
+      if (editingId) {
+        // Edit
+        const updated = products.map(p =>
+          p.id === editingId
+            ? { ...p, name: trimmedName, defaultPrice: finalPrice, tagId: finalTagId, image: imagePreview || undefined }
+            : p
+        );
+        await onUpdateProducts(updated);
+        // Add
+        const newProduct: Product = {
+          id: crypto.randomUUID(),
+          name: trimmedName,
+          defaultPrice: finalPrice,
+          tagId: finalTagId,
+          image: imagePreview || undefined
+        };
+        await onUpdateProducts([...products, newProduct]);
+      }
+      resetForm();
+    } catch (error) {
+      console.error("Error saving product:", error);
+      showAlert('Error', 'No se pudo guardar el producto.', 'error');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const startEdit = (p: Product) => {
@@ -747,11 +769,15 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, tags, 
                 <button onClick={resetForm} className="flex-1 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Cancelar</button>
                 <button
                   onClick={handleSaveProduct}
-                  disabled={tags.length === 0}
-                  className={`flex-1 py-2 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${tags.length === 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                  disabled={tags.length === 0 || isSaving}
+                  className={`flex-1 py-2 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${tags.length === 0 || isSaving ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                 >
-                  <Save size={16} />
-                  {tags.length === 0 ? 'Cargando Tags...' : 'Guardar'}
+                  {isSaving ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Save size={16} />
+                  )}
+                  {isSaving ? 'Guardando...' : (tags.length === 0 ? 'Cargando Tags...' : 'Guardar')}
                 </button>
               </div>
             </div>

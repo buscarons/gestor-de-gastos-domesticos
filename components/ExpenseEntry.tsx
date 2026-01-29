@@ -183,6 +183,8 @@ export const ExpenseEntry: React.FC<ExpenseEntryProps> = ({ data, previousYearDa
   };
 
   const handleAddProductFromModal = (newProduct: Product) => {
+    // Extra safeguard: check if product already exists by ID
+    if (products.some(p => p.id === newProduct.id)) return;
     onUpdateProducts([...products, newProduct]);
   };
 
@@ -383,8 +385,8 @@ export const ExpenseEntry: React.FC<ExpenseEntryProps> = ({ data, previousYearDa
           <button
             onClick={() => setShowSmartImport(true)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-sm h-[38px] ${isGuest
-                ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-pointer hover:bg-gray-200'
-                : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:shadow-lg hover:opacity-90'
+              ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-pointer hover:bg-gray-200'
+              : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:shadow-lg hover:opacity-90'
               }`}
             title={isGuest ? "IA no disponible en modo invitado" : "Pegar texto y detectar gastos con IA"}
           >

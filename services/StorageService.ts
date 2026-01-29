@@ -95,7 +95,8 @@ export const StorageService = {
 
     const { data, error } = await supabase
       .from('expenses')
-      .select('*');
+      .select('*')
+      .eq('user_id', user.id);
 
     if (error) {
       console.error("Error fetching expenses", error);
@@ -119,8 +120,11 @@ export const StorageService = {
       return;
     }
 
-    // Supabase Sync Logic
-    const { data: existing } = await supabase.from('expenses').select('id');
+    // Supabase Sync Logic - Only look at current user's data
+    const { data: existing } = await supabase
+      .from('expenses')
+      .select('id')
+      .eq('user_id', user.id);
     const existingIds = existing ? existing.map(x => x.id) : [];
     const newIds = new Set(data.map(d => d.id));
 
@@ -152,7 +156,10 @@ export const StorageService = {
       return stored ? JSON.parse(stored) : [];
     }
 
-    const { data, error } = await supabase.from('income').select('*');
+    const { data, error } = await supabase
+      .from('income')
+      .select('*')
+      .eq('user_id', user.id);
     if (error) {
       console.error("Error fetching income", error);
       return [];
@@ -173,7 +180,10 @@ export const StorageService = {
       return;
     }
 
-    const { data: existing } = await supabase.from('income').select('id');
+    const { data: existing } = await supabase
+      .from('income')
+      .select('id')
+      .eq('user_id', user.id);
     const existingIds = existing ? existing.map(x => x.id) : [];
     const newIds = new Set(data.map(d => d.id));
     const toDelete = existingIds.filter(id => !newIds.has(id));
@@ -234,7 +244,10 @@ export const StorageService = {
       return stored ? JSON.parse(stored) : [{ year: new Date().getFullYear(), startMonthIndex: 0 }];
     }
 
-    const { data, error } = await supabase.from('year_configs').select('*');
+    const { data, error } = await supabase
+      .from('year_configs')
+      .select('*')
+      .eq('user_id', user.id);
     if (error) return [{ year: 2025, startMonthIndex: 6 }];
 
     if (!data || data.length === 0) return [{ year: 2025, startMonthIndex: 6 }];
@@ -273,7 +286,10 @@ export const StorageService = {
       return stored ? JSON.parse(stored) : [];
     }
 
-    const { data, error } = await supabase.from('products').select('*');
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('user_id', user.id);
     if (error) return [];
 
     return data.map((row: any) => ({
@@ -292,7 +308,10 @@ export const StorageService = {
       return;
     }
 
-    const { data: existing } = await supabase.from('products').select('id');
+    const { data: existing } = await supabase
+      .from('products')
+      .select('id')
+      .eq('user_id', user.id);
     const existingIds = existing ? existing.map(x => x.id) : [];
     const newIds = new Set(products.map(d => d.id));
     const toDelete = existingIds.filter(id => !newIds.has(id));
@@ -327,7 +346,10 @@ export const StorageService = {
     }
 
     // CLOUD MODE
-    const { data, error } = await supabase.from('product_tags').select('*');
+    const { data, error } = await supabase
+      .from('product_tags')
+      .select('*')
+      .eq('user_id', user.id);
 
     // If DB is empty, seed defaults
     if (!error && (!data || data.length === 0)) {

@@ -63,10 +63,10 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, d
 
     const updatedData = data.map(item => {
       if (item.id === selectedItemId) {
-        
+
         // CHECK IF THIS CATEGORY SUPPORTS BREAKDOWN (TRANSACTIONS)
-        const supportsBreakdown = CATEGORIES_WITH_BREAKDOWN.includes(item.category) || 
-                                  CATEGORIES_WITH_BREAKDOWN.some(c => item.category.includes(c));
+        const supportsBreakdown = CATEGORIES_WITH_BREAKDOWN.includes(item.category) ||
+          CATEGORIES_WITH_BREAKDOWN.some(c => item.category.includes(c));
 
         const newAmounts = [...item.amounts];
 
@@ -74,14 +74,14 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, d
           // Construct Description
           let finalDesc = description.trim() || 'Ingreso Rápido';
           if (showCalculator && manualQty && manualUnit) {
-             // If user typed a description like "Bananas", append the calc: "Bananas (1.5 x 20)"
-             // If user didn't type desc, use item name: "Supermercado (1.5 x 20)"
-             const baseDesc = description.trim() || item.name;
-             finalDesc = `${baseDesc} (${manualQty} x $${manualUnit})`;
+            // If user typed a description like "Bananas", append the calc: "Bananas (1.5 x 20)"
+            // If user didn't type desc, use item name: "Supermercado (1.5 x 20)"
+            const baseDesc = description.trim() || item.name;
+            finalDesc = `${baseDesc} (${manualQty} x $${manualUnit})`;
           }
 
           const newTransaction: Transaction = {
-            id: Date.now().toString(),
+            id: crypto.randomUUID(),
             description: finalDesc,
             amount: numAmount,
             date: new Date().toISOString()
@@ -89,23 +89,23 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, d
 
           const currentTransactions = item.transactions?.[monthIndex] || [];
           let finalTransactions = [...currentTransactions, newTransaction];
-          
+
           // Handle legacy manual value preservation
           if (!item.transactions?.[monthIndex] && item.amounts[monthIndex] > 0) {
-             const legacyTransaction: Transaction = {
-               id: 'legacy-' + Date.now(),
-               description: 'Gasto previo (Manual)',
-               amount: item.amounts[monthIndex],
-               date: new Date().toISOString()
-             };
-             finalTransactions = [legacyTransaction, newTransaction];
+            const legacyTransaction: Transaction = {
+              id: 'legacy-' + crypto.randomUUID(),
+              description: 'Gasto previo (Manual)',
+              amount: item.amounts[monthIndex],
+              date: new Date().toISOString()
+            };
+            finalTransactions = [legacyTransaction, newTransaction];
           }
 
           const newTotal = finalTransactions.reduce((acc, t) => acc + t.amount, 0);
           newAmounts[monthIndex] = newTotal;
 
-          return { 
-            ...item, 
+          return {
+            ...item,
             amounts: newAmounts,
             transactions: {
               ...item.transactions,
@@ -116,7 +116,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, d
         } else {
           // LOGIC FOR FIXED EXPENSES (UTE, Antel, etc.) -> Simple Addition
           newAmounts[monthIndex] = (newAmounts[monthIndex] || 0) + numAmount;
-          
+
           return {
             ...item,
             amounts: newAmounts
@@ -145,7 +145,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, d
 
         <div className="overflow-y-auto flex-1 p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            
+
             {/* Month Selection */}
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
@@ -158,11 +158,10 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, d
                     key={m}
                     type="button"
                     onClick={() => setMonthIndex(idx)}
-                    className={`text-xs py-2 rounded-md transition-colors border ${
-                      monthIndex === idx 
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-md' 
-                        : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                    }`}
+                    className={`text-xs py-2 rounded-md transition-colors border ${monthIndex === idx
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                      }`}
                   >
                     {m.substring(0, 3)}
                   </button>
@@ -202,57 +201,57 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, d
 
             {/* Description (New) */}
             <div className="space-y-2">
-               <div className="flex justify-between items-center">
-                 <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                   <PenTool size={16} className="text-blue-500" />
-                   Detalle <span className="text-gray-400 font-normal text-xs">(Opcional)</span>
-                 </label>
-                 
-                 {/* Calculator Toggle */}
-                 <button 
+              <div className="flex justify-between items-center">
+                <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <PenTool size={16} className="text-blue-500" />
+                  Detalle <span className="text-gray-400 font-normal text-xs">(Opcional)</span>
+                </label>
+
+                {/* Calculator Toggle */}
+                <button
                   type="button"
                   onClick={() => setShowCalculator(!showCalculator)}
                   className={`text-xs flex items-center gap-1 px-2 py-1 rounded-full transition-colors border ${showCalculator ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200'}`}
-                 >
-                   <Calculator size={14} />
-                   {showCalculator ? 'Calculadora ON' : 'Calculadora OFF'}
-                 </button>
-               </div>
-               <input
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder={showCalculator ? "Ej. Bananas" : "Ej. Compra del día"}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
-               />
+                >
+                  <Calculator size={14} />
+                  {showCalculator ? 'Calculadora ON' : 'Calculadora OFF'}
+                </button>
+              </div>
+              <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={showCalculator ? "Ej. Bananas" : "Ej. Compra del día"}
+                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+              />
             </div>
 
             {/* Calculator Inputs */}
             {showCalculator && (
               <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 grid grid-cols-[1fr_auto_1fr] gap-2 items-end animate-fade-in">
-                 <div>
-                    <label className="block text-[10px] font-bold text-blue-600 mb-1">Cantidad/Peso</label>
-                    <input 
-                      type="number" 
-                      step="any"
-                      value={manualQty}
-                      onChange={e => setManualQty(e.target.value)}
-                      className="w-full text-sm border border-blue-200 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none"
-                      placeholder="1.674"
-                    />
-                 </div>
-                 <div className="text-blue-400 pb-2">×</div>
-                 <div>
-                    <label className="block text-[10px] font-bold text-blue-600 mb-1">Precio Unit.</label>
-                    <input 
-                      type="number" 
-                      step="any"
-                      value={manualUnit}
-                      onChange={e => setManualUnit(e.target.value)}
-                      className="w-full text-sm border border-blue-200 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none"
-                      placeholder="119"
-                    />
-                 </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-blue-600 mb-1">Cantidad/Peso</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={manualQty}
+                    onChange={e => setManualQty(e.target.value)}
+                    className="w-full text-sm border border-blue-200 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none"
+                    placeholder="1.674"
+                  />
+                </div>
+                <div className="text-blue-400 pb-2">×</div>
+                <div>
+                  <label className="block text-[10px] font-bold text-blue-600 mb-1">Precio Unit.</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={manualUnit}
+                    onChange={e => setManualUnit(e.target.value)}
+                    className="w-full text-sm border border-blue-200 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none"
+                    placeholder="119"
+                  />
+                </div>
               </div>
             )}
 

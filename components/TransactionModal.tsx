@@ -168,10 +168,21 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   };
 
   const handleQuickCreateProduct = () => {
-    if (!searchTerm) return;
+    const trimmedBrand = searchTerm.trim();
+    if (!trimmedBrand) return;
+
+    // Check if it already exists in the full products list (case-insensitive)
+    const existing = products.find(p => p.name.trim().toLowerCase() === trimmedBrand.toLowerCase());
+
+    if (existing) {
+      setSelectedProduct(existing);
+      setPriceOverride(existing.defaultPrice.toString());
+      return;
+    }
+
     const newProduct: Product = {
-      id: Date.now().toString(),
-      name: searchTerm,
+      id: crypto.randomUUID(), // Use more robust ID
+      name: trimmedBrand,
       defaultPrice: 0,
       tagId: 'uncategorized'
     };
