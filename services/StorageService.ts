@@ -96,7 +96,8 @@ export const StorageService = {
     const { data, error } = await supabase
       .from('expenses')
       .select('*')
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .order('order_index', { ascending: true });
 
     if (error) {
       console.error("Error fetching expenses", error);
@@ -109,7 +110,8 @@ export const StorageService = {
       category: row.category,
       name: row.name,
       amounts: row.amounts,
-      transactions: row.transactions || undefined
+      transactions: row.transactions || undefined,
+      orderIndex: row.order_index
     }));
   },
 
@@ -134,14 +136,15 @@ export const StorageService = {
       await supabase.from('expenses').delete().in('id', toDelete);
     }
 
-    const toUpsert = data.map(item => ({
+    const toUpsert = data.map((item, index) => ({
       id: item.id,
       user_id: user.id,
       year: item.year,
       category: item.category,
       name: item.name,
       amounts: item.amounts,
-      transactions: item.transactions
+      transactions: item.transactions,
+      order_index: index // Save the index from the array order
     }));
 
     const { error } = await supabase.from('expenses').upsert(toUpsert);

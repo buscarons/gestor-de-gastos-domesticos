@@ -31,6 +31,7 @@ export interface ExpenseItem {
   name: string;     // e.g., "UTE", "CASMU Israel"
   amounts: number[]; // Array of 12 numbers (Jan-Dec)
   transactions?: Record<number, Transaction[]>; // Map of month index to transactions
+  orderIndex?: number; // Order index for sorting
 }
 
 export interface IncomeItem {
