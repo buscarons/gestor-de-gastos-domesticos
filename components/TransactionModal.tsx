@@ -144,16 +144,21 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     addTransaction(desc, total, selectedProduct.id, price, qty);
 
     // AUTO UPDATE REFERENCE PRICE Logic
+    // Allow updates for transactions up to 7 days old (to account for delayed entry)
     const now = new Date();
-    const todayStr = [
-      now.getFullYear(),
-      String(now.getMonth() + 1).padStart(2, '0'),
-      String(now.getDate()).padStart(2, '0')
+    const cutoffDate = new Date();
+    cutoffDate.setDate(now.getDate() - 7);
+
+    const cutoffStr = [
+      cutoffDate.getFullYear(),
+      String(cutoffDate.getMonth() + 1).padStart(2, '0'),
+      String(cutoffDate.getDate()).padStart(2, '0')
     ].join('-');
 
-    const isHistorical = entryDate < todayStr;
+    // If entryDate is NOT older than 7 days, we consider it "current enough" to update price
+    const isTooOld = entryDate < cutoffStr;
 
-    if (!isHistorical && onUpdateProduct && price !== selectedProduct.defaultPrice) {
+    if (!isTooOld && onUpdateProduct && price !== selectedProduct.defaultPrice) {
       onUpdateProduct({
         ...selectedProduct,
         defaultPrice: price
