@@ -146,19 +146,19 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, tags, 
     }
 
     const finalTagId = tagId || tags[0].id;
-    console.log("Attempting to save product:", { trimmedName, finalPrice, finalTagId, editingId }); // DEBUG LOG
     setIsSaving(true);
 
     try {
       if (editingId) {
-        // Edit
+        // Edit existing product
         const updated = products.map(p =>
           p.id === editingId
             ? { ...p, name: trimmedName, defaultPrice: finalPrice, tagId: finalTagId, image: imagePreview || undefined }
             : p
         );
         await onUpdateProducts(updated);
-        // Add
+      } else {
+        // Add new product
         const newProduct: Product = {
           id: crypto.randomUUID(),
           name: trimmedName,
