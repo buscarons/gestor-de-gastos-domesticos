@@ -333,7 +333,10 @@ export const StorageService = {
     }));
 
     const { error } = await supabase.from('products').upsert(toUpsert);
-    if (error) console.error("Error saving products", error);
+    if (error) {
+      console.error("Error saving products", error);
+      throw error;
+    }
   },
 
   // --- TAGS ---
