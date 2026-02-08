@@ -146,6 +146,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, tags, 
     }
 
     const finalTagId = tagId || tags[0].id;
+    console.log("Attempting to save product:", { trimmedName, finalPrice, finalTagId, editingId }); // DEBUG LOG
     setIsSaving(true);
 
     try {

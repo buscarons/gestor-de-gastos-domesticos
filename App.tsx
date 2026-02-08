@@ -219,6 +219,7 @@ const App: React.FC = () => {
   };
 
   const handleUpdateProducts = async (newProducts: Product[]) => {
+    console.log("App.tsx: handleUpdateProducts called with:", newProducts.length, "products"); // DEBUG LOG
     setProducts(newProducts);
     await StorageService.saveProducts(newProducts);
   };
